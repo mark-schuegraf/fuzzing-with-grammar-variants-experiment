@@ -6,8 +6,12 @@ This module contains luigi tasks to run the grammar transformation experiments.
 """
 from collections import ChainMap
 import logging
+import os
 from pathlib import Path
+import platform
 from pprint import pformat
+import shutil
+import subprocess
 import sys
 from typing import Any, Dict, List
 
@@ -136,65 +140,87 @@ class Subjects(object):
 class ExperimentConfig(luigi.Config):
     experiment_dir: str = luigi.Parameter(description="The path to where all the experiments happen. Should be outside the repository.")
     tool_dir: str = luigi.Parameter(description="The path to the tool sources.")
-    use_grammar_caching: bool = luigi.BoolParameter(description="Let tribble cache grammar files so it does not have to re-parse them on each invocation.")
     input_generation_mode: str = luigi.Parameter(description="Which mode to use when generating the inputs from the transformed grammars.")
     remove_randomly_generated_files: bool = luigi.BoolParameter(description="Remove the randomly generated files after we have acquired the execution metrics to save space.")
+
 
 config = ExperimentConfig()
 work_dir: Path = Path(config.experiment_dir)
 tool_dir: Path = Path(config.tool_dir)
-
 subjects: Dict[str, Dict[str, Any]] = Subjects().all_subjects  # Change subject subset selection statically here
-
 drivers = ChainMap(*[d["drivers"] for d in subjects.values()])
 
 
 class Experiment(luigi.Task):
     """Transform all input grammars of the requested format in the specified way. Then evaluate the coverage achieved by inputs generated from them."""
     transformation: int = luigi.IntParameter(description="The transformation to be performed. Must match a valid tribble transformation regex pattern.", positional=False)
-    report_name: str = luigi.Parameter(description="The name of the report file.", positional=False, default="report")
-    only_format: str = luigi.Parameter(description="Only run experiments for formats starting with this prefix.", positional=False, default="")
+    # TODO support these later:
+    # only_format: str = luigi.Parameter(description="Only run experiments for formats starting with this prefix.", positional=False, default="")
+    # report_name: str = luigi.Parameter(description="The name of the report file.", positional=False, default="report")
 
+    def requires(self):
+        []
 
 class ComputeCoverageStatistics(luigi.Task):
     """Computes conventional statistics on the coverage files."""
 
     # requires ReportCoverage for name in subject names
 
-    #def output(self):
+    # def output(self):
     #    return luigi.LocalTarget(work_dir / "median-coverages.csv" /)
 
 
-#class ReportCoverage(luigi.Task):
+# class ReportCoverage(luigi.Task):
 
 
-#class RunSubject(luigi.Task):
+# class RunSubject(luigi.Task):
 # requires BuildSubject, DownloadOriginalBytecode, GenerateInputs
 
 
-#class BuildSubject(luigi.Task):
+# class BuildSubject(luigi.Task):
 
 
-#class DownloadOriginalBytecode(luigi.Task):
+# class DownloadOriginalBytecode(luigi.Task):
 
 
-#class GenerateInputs(luigi.Task):
+# class GenerateInputs(luigi.Task):
 # requires RunTribbleGenerationMode
 
 
-#class RunTribbleGenerationMode(luigi.Task):
+# class RunTribbleGenerationMode(luigi.Task):
 # requires TransformGrammar
 
 
-#class TransformGrammar(luigi.Task):
+# class TransformGrammar(luigi.Task):
 # requires RunTribbleGenerationMode
 
 
-#class RunTribbleTransformationMode(luigi.Task):
+# class RunTribbleTransformationMode(luigi.Task):
 # requires BuildTribble
 
 
-#class BuildTribble(luigi.Task):
+class GradleTask(object):
+    @staticmethod
+    def gradlew(*commands: str) -> List[str]:
+        """Constructs a platform-appropriate gradle wrapper call string."""
+        invocation = ["cmd", "/c", "gradlew.bat"] if platform.system() == "Windows" else ["./gradlew"]
+        if commands:
+            invocation.extend(commands)
+        return invocation
+
+
+class BuildTribble(luigi.Task, GradleTask):
+    """Builds the tribble jar and copies it into the working directory."""
+
+    def output(self):
+        return luigi.LocalTarget(work_dir / "tools" / "tribble.jar")
+
+    def run(self):
+        subprocess.run(self.gradlew("assemble", "-p", "tribble-tool"), check=True, cwd=tool_dir / "tribble", stdout=subprocess.DEVNULL)
+        build_dir = tool_dir / "tribble" / "tribble-tool" / "build" / "libs"
+        artifact = next(build_dir.glob("**/tribble*.jar"))
+        os.makedirs(os.path.dirname(self.output().path), exist_ok=True)
+        shutil.copy(str(artifact), self.output().path)
 
 
 # TODO add run monitoring later
