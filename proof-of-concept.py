@@ -142,6 +142,7 @@ class ExperimentConfig(luigi.Config):
     tool_dir: str = luigi.Parameter(description="The path to the tool sources.")
     grammar_transformation_mode: str = luigi.Parameter(description="Which mode to use when transforming grammars.")
     input_generation_mode: str = luigi.Parameter(description="Which mode to use when generating the inputs from the transformed grammars.")
+    # TODO: support later:
     remove_randomly_generated_files: bool = luigi.BoolParameter(description="Remove the randomly generated files after we have acquired the execution metrics to save space.")
 
 
@@ -149,109 +150,7 @@ config = ExperimentConfig()
 work_dir: Path = Path(config.experiment_dir)
 tool_dir: Path = Path(config.tool_dir)
 subjects: Dict[str, Dict[str, Any]] = Subjects().all_subjects  # Change subject subset selection statically here
-drivers = ChainMap(*[d["drivers"] for d in subjects.values()])
-
-
-class Experiment(luigi.Task):
-    """Transform all input grammars of the requested format in the specified way. Then evaluate the coverage achieved by inputs generated from them."""
-    transformation: int = luigi.IntParameter(description="The transformation to be performed. Must match a valid tribble transformation regex pattern.", positional=False)
-    # TODO support these later:
-    # only_format: str = luigi.Parameter(description="Only run experiments for formats starting with this prefix.", positional=False, default="")
-    # report_name: str = luigi.Parameter(description="The name of the report file.", positional=False, default="report")
-
-    def requires(self):
-        return ComputeCoverageStatistics(self.transformation)
-
-class ComputeCoverageStatistics(luigi.Task):
-    """Computes conventional statistics on the coverage files."""
-
-    # requires ReportCoverage for name in subject names
-
-    # def output(self):
-    #    return luigi.LocalTarget(work_dir / "median-coverages.csv" /)
-
-
-# class ReportCoverage(luigi.Task):
-
-
-# class RunSubject(luigi.Task):
-# requires BuildSubject, DownloadOriginalBytecode, GenerateInputs
-
-
-class RunTribbleGenerationMode(luigi.Task):
-    """Generates inputs with tribble using a transformed grammar."""
-    format: str = luigi.Parameter(description="The name of the format directory (e.g. json)", positional=False)
-
-    def requires(self):
-        return {"transformed-grammar": RunTribbleTransformationMode(self.format), "tribble": BuildTribble()}
-
-    def output(self):
-        return luigi.LocalTarget(work_dir / "inputs" / self.format)
-
-    def run(self):
-        subject = subjects[self.format]
-        transformed_grammar_file = self.input()["transformed-grammar"].path
-        tribble_jar = self.input()["tribble"].path
-        with self.output().temporary_path() as out:
-            args = ["java",
-                    # "-Xss100m",  TODO: probably don't want this
-                    # "-Xms256m",  TODO: probably don't want this
-                    # f"-Xmx{self.resources['ram']}g",  TODO: probably don't want this
-                    "-jar", tribble_jar,
-                    # "--no-check-duplicate-alts",  TODO: probably don't want this
-                    "generate",
-                    f'--suffix={subject["suffix"]}',
-                    f"--out-dir={out}",
-                    f"--grammar-file={transformed_grammar_file}",
-                    f"--mode={config.input_generation_mode}",
-                    # "--unfold-regexes",  TODO: probably don't want this
-                    # "--merge-literals",  TODO: probably don't want this
-                    "--ignore-grammar-cache"
-                    ]
-            logging.info("Launching %s", " ".join(args))
-            subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
-
-
-class RunTribbleTransformationMode(luigi.Task):
-    """Transforms one grammar into another with tribble."""
-    format: str = luigi.Parameter(description="The name of the format directory (e.g. json)", positional=False)
-    # TODO: do we need a parameter for the output grammar file? Probably not.
-    #  + At present, name output grammar like input grammar. Becomes a problem when multiple transformations are applied.
-    #  + But then can also make new directory for each set of transformed grammars.
-    # output_grammar_file: str = luigi.Parameter(description="Where to put the transformed grammar file.", positional=False)
-
-    @property
-    def grammar_name(self) -> str:
-        subject = subjects[self.format]
-        return subject["grammar"]
-
-    def requires(self):
-        return BuildTribble()
-
-    def output(self):
-        return luigi.LocalTarget(work_dir / "transformed-grammars" / self.grammar_name)
-
-    def run(self):
-        grammar_file = Path("grammars") / self.grammar_name
-        output_grammar_file = Path("output_grammars") / self.grammar_name
-        tribble_jar = self.input().path
-        with self.output().temporary_path() as out:
-            args = ["java",
-                    # "-Xss100m",  TODO: probably don't want this
-                    # "-Xms256m",  TODO: probably don't want this
-                    # f"-Xmx{self.resources['ram']}g",  TODO: probably don't want this
-                    "-jar", tribble_jar,
-                    # "--no-check-duplicate-alts",  TODO: probably don't want this
-                    "transform-grammar",
-                    f"--mode={config.grammar_transformation_mode}"
-                    f"--grammar-file={grammar_file}",
-                    f"--output-grammar-file={output_grammar_file}",
-                    # "--unfold-regexes",  TODO: probably don't want this
-                    # "--merge-literals",  TODO: probably don't want this
-                    "--ignore-grammar-cache"
-                    ]
-            logging.info("Launching %s", " ".join(args))
-            subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
+drivers = ChainMap(*[d["drivers"] for d in subjects.values()])  # TODO: probably don't want this
 
 
 class GradleTask(object):
@@ -280,7 +179,7 @@ class BuildSubject(luigi.Task, GradleTask):
 
 class DownloadOriginalBytecode(luigi.Task, GradleTask):
     """Downloads the unmodified bytecode of the subject and places it into the working directory."""
-    subject_name: str = luigi.Parameter(description="The name of the subject to build")
+    subject_name: str = luigi.Parameter(description="The name of the subject to build", positional=False)
 
     def output(self):
         return luigi.LocalTarget(work_dir / "tools" / "subjects" / self.subject_name / f"{self.subject_name}-original.jar")
@@ -306,8 +205,174 @@ class BuildTribble(luigi.Task, GradleTask):
         shutil.copy(str(artifact), self.output().path)
 
 
+class RunTribbleTransformationMode(luigi.Task):
+    """Transforms one grammar into another with tribble."""
+    format: str = luigi.Parameter(description="The name of the format directory (e.g. json)", positional=False)
+    # TODO: do we need a parameter for the output grammar file? Probably not.
+    #  + At present, name output grammar like input grammar. Becomes a problem when multiple transformations are applied.
+    #  + But then can also make new directory for each set of transformed grammars.
+    # output_grammar_file: str = luigi.Parameter(description="Where to put the transformed grammar file.", positional=False)
+
+    @property
+    def grammar_name(self) -> str:
+        subject = subjects[self.format]
+        return subject["grammar"]
+
+    def requires(self):
+        return BuildTribble()
+
+    def output(self):
+        return luigi.LocalTarget(work_dir / "transformed-grammars" / self.grammar_name)
+
+    def run(self):
+        grammar_file = Path("grammars") / self.grammar_name
+        tribble_jar = self.input().path
+        with self.output().temporary_path() as out:
+            args = ["java",
+                    # "-Xss100m",  TODO: probably don't want this
+                    # "-Xms256m",  TODO: probably don't want this
+                    # f"-Xmx{self.resources['ram']}g",  TODO: probably don't want this
+                    "-jar", tribble_jar,
+                    # "--no-check-duplicate-alts",  TODO: probably don't want this
+                    "transform-grammar",
+                    f"--mode={config.grammar_transformation_mode}"
+                    f"--grammar-file={grammar_file}",
+                    f"--output-grammar-file={out}",
+                    # "--unfold-regexes",  TODO: probably don't want this
+                    # "--merge-literals",  TODO: probably don't want this
+                    "--ignore-grammar-cache"
+                    ]
+            logging.info("Launching %s", " ".join(args))
+            subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
+
+
+class RunTribbleGenerationMode(luigi.Task):
+    """Generates inputs with tribble using a transformed grammar."""
+    format: str = luigi.Parameter(description="The name of the format directory (e.g. json)", positional=False)
+
+    def requires(self):
+        return {
+            "transformed-grammar": RunTribbleTransformationMode(self.format),
+            "tribble": BuildTribble()
+        }
+
+    def output(self):
+        return luigi.LocalTarget(work_dir / "inputs" / self.format)
+
+    def run(self):
+        subject = subjects[self.format]
+        transformed_grammar_file = self.input()["transformed-grammar"].path
+        tribble_jar = self.input()["tribble"].path
+        with self.output().temporary_path() as out:
+            args = ["java",
+                    # "-Xss100m",  TODO: probably don't want this
+                    # "-Xms256m",  TODO: probably don't want this
+                    # f"-Xmx{self.resources['ram']}g",  TODO: probably don't want this
+                    "-jar", tribble_jar,
+                    # "--no-check-duplicate-alts",  TODO: probably don't want this
+                    "generate",
+                    f'--suffix={subject["suffix"]}',
+                    f"--out-dir={out}",
+                    f"--grammar-file={transformed_grammar_file}",
+                    f"--mode={config.input_generation_mode}",
+                    # "--unfold-regexes",  TODO: probably don't want this
+                    # "--merge-literals",  TODO: probably don't want this
+                    "--ignore-grammar-cache"
+                    ]
+            logging.info("Launching %s", " ".join(args))
+            subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
+
+
+class RunSubjectOnDirectory(luigi.Task):
+    """Runs the given subject with the given inputs and produces a cumulative coverage report at the given location."""
+    input_directory: str = luigi.Parameter(description="The directory with inputs to feed into the subject.", positional=False)
+    report_file: str = luigi.Parameter(description="The path to the .csv cumulative coverage report.", positional=False)
+    subject_name: str = luigi.Parameter(description="The name of the subject to build", positional=False)
+
+    @property
+    def input_task(self) -> luigi.Task:  # TODO: why does this need to exist?
+        class OutputWrapper(luigi.Task):
+            # This parameter is significant for luigi to distinguish between different directories
+            input_dir: str = luigi.Parameter(description="Pretend that this task has output this dir")
+
+            def output(self):
+                return luigi.LocalTarget(self.input_dir)
+
+        return OutputWrapper(self.input_directory)
+
+    def requires(self):
+        return {
+            "subject_jar": BuildSubject(self.subject_name),
+            "original_jar": DownloadOriginalBytecode(self.subject_name),
+            "inputs": self.input_task,
+        }
+
+    def output(self):
+        return luigi.LocalTarget(self.report_file)
+
+    def run(self):
+        subject_jar = self.input()["subject_jar"].path
+        original_jar = self.input()["original_jar"].path
+        input_path = self.input()["inputs"].path
+        original_output = Path(self.output().path)
+        args = ["java",
+                "-Xss10m",
+                "-Xms256m",
+                f"-Xmx{self.resources['ram']}g",
+                "-jar", subject_jar,
+                "--ignore-exceptions",
+                "--report-coverage", original_output,  # TODO: wrap in coverage_report()?
+                "--cumulative",  # TODO: confirm this is desired
+                "--original-bytecode", original_jar,
+                input_path,
+                ]
+        logging.info("Launching %s", " ".join(args))
+        subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
+
+    # TODO: if the CoverageOutput mixin is needed, overwrite Task.complete() like so:
+    # def complete(self):
+    #     original_output = Path(self.output().path)
+    #     return self.coverage_report(original_output).exists()
+
+
+class ComputeCoverageStatistics(luigi.Task):
+    """Computes conventional statistics on the coverage files."""
+
+    # TODO: apply bleach to eyes after reading this. WIP, broken in every regard.
+    #  + What it should do: for each format, feed the corresponding inputs to all compatible drivers
+    def requires(self):
+        return {
+                subj_name: RunSubjectOnDirectory(input_directory=str(work_dir / "inputs" / subjects[subj_name]["suffix"]),
+                                                 report_file=str(work_dir / "inputs" / f"{subj_name}.coverage.csv"),
+                                                 subject_name=subj_name)
+                for subj_name
+                in drivers
+                }
+
+    # TODO: calculate median branch coverage here by inspecting the last line of each subject coverage file using pandas
+    # def run(self): ...
+
+    # def output(self):
+    #    return luigi.LocalTarget(work_dir / "evaluation" / "median-coverages.csv" )
+
+
+# Currently does nothing, will later coordinate several runs
+class Experiment(luigi.Task):
+    """Transform all input grammars of the requested formats in the specified way. Then evaluate the coverage achieved by inputs generated from them."""
+    # TODO support these later:
+    # only_format: str = luigi.Parameter(description="Only run experiments for formats starting with this prefix.", positional=False, default="")
+    # report_name: str = luigi.Parameter(description="The name of the report file.", positional=False, default="report")
+
+    def requires(self):
+        return ComputeCoverageStatistics()
+
+    def output(self):
+        self.input()
+        # later have luigi.LocalTarget(work_dir / "evaluation" / ...)
+
+
 # TODO add run monitoring later
 if __name__ == '__main__':
-    luigi.BoolParameter.parsing = luigi.BoolParameter.EXPLICIT_PARSING # TODO: why do we / do we need this?
+    luigi.BoolParameter.parsing = luigi.BoolParameter.EXPLICIT_PARSING  # TODO: why do we / do we need this?
     logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", datefmt="%d.%m.%Y %H:%M:%S", level=logging.INFO, stream=sys.stdout)
     luigi.run(main_task_cls=Experiment)
