@@ -140,6 +140,7 @@ class Subjects(object):
 class ExperimentConfig(luigi.Config):
     experiment_dir: str = luigi.Parameter(description="The path to where all the experiments happen. Should be outside the repository.")
     tool_dir: str = luigi.Parameter(description="The path to the tool sources.")
+    grammar_transformation_mode: str = luigi.Parameter(description="Which mode to use when transforming grammars.")
     input_generation_mode: str = luigi.Parameter(description="Which mode to use when generating the inputs from the transformed grammars.")
     remove_randomly_generated_files: bool = luigi.BoolParameter(description="Remove the randomly generated files after we have acquired the execution metrics to save space.")
 
@@ -159,7 +160,7 @@ class Experiment(luigi.Task):
     # report_name: str = luigi.Parameter(description="The name of the report file.", positional=False, default="report")
 
     def requires(self):
-        []
+        return ComputeCoverageStatistics(self.transformation)
 
 class ComputeCoverageStatistics(luigi.Task):
     """Computes conventional statistics on the coverage files."""
@@ -187,16 +188,80 @@ class ComputeCoverageStatistics(luigi.Task):
 # requires RunTribbleGenerationMode
 
 
-# class RunTribbleGenerationMode(luigi.Task):
-# requires TransformGrammar
+class RunTribbleGenerationMode(luigi.Task):
+    """Generates inputs with tribble using a transformed grammar."""
+    format: str = luigi.Parameter(description="The name of the format directory (e.g. json)", positional=False)
+
+    def requires(self):
+        return {"transformed-grammar": RunTribbleTransformationMode(self.format), "tribble": BuildTribble()}
+
+    def output(self):
+        return luigi.LocalTarget(work_dir / "inputs" / self.format)
+
+    def run(self):
+        subject = subjects[self.format]
+        transformed_grammar_file = self.input()["transformed-grammar"].path
+        tribble_jar = self.input()["tribble"].path
+        with self.output().temporary_path() as out:
+            args = ["java",
+                    # "-Xss100m",  TODO: probably don't want this
+                    # "-Xms256m",  TODO: probably don't want this
+                    # f"-Xmx{self.resources['ram']}g",  TODO: probably don't want this
+                    "-jar", tribble_jar,
+                    # "--no-check-duplicate-alts",  TODO: probably don't want this
+                    "generate",
+                    f'--suffix={subject["suffix"]}',
+                    f"--out-dir={out}",
+                    f"--grammar-file={transformed_grammar_file}",
+                    f"--mode={config.input_generation_mode}",
+                    # "--unfold-regexes",  TODO: probably don't want this
+                    # "--merge-literals",  TODO: probably don't want this
+                    "--ignore-grammar-cache"
+                    ]
+            logging.info("Launching %s", " ".join(args))
+            subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
 
-# class TransformGrammar(luigi.Task):
-# requires RunTribbleGenerationMode
+class RunTribbleTransformationMode(luigi.Task):
+    """Transforms one grammar into another with tribble."""
+    format: str = luigi.Parameter(description="The name of the format directory (e.g. json)", positional=False)
+    # TODO: do we need a parameter for the output grammar file? Probably not.
+    #  + At present, name output grammar like input grammar. Becomes a problem when multiple transformations are applied.
+    #  + But then can also make new directory for each set of transformed grammars.
+    # output_grammar_file: str = luigi.Parameter(description="Where to put the transformed grammar file.", positional=False)
 
+    @property
+    def grammar_name(self) -> str:
+        subject = subjects[self.format]
+        return subject["grammar"]
 
-# class RunTribbleTransformationMode(luigi.Task):
-# requires BuildTribble
+    def requires(self):
+        return BuildTribble()
+
+    def output(self):
+        return luigi.LocalTarget(work_dir / "transformed-grammars" / self.grammar_name)
+
+    def run(self):
+        grammar_file = Path("grammars") / self.grammar_name
+        output_grammar_file = Path("output_grammars") / self.grammar_name
+        tribble_jar = self.input().path
+        with self.output().temporary_path() as out:
+            args = ["java",
+                    # "-Xss100m",  TODO: probably don't want this
+                    # "-Xms256m",  TODO: probably don't want this
+                    # f"-Xmx{self.resources['ram']}g",  TODO: probably don't want this
+                    "-jar", tribble_jar,
+                    # "--no-check-duplicate-alts",  TODO: probably don't want this
+                    "transform-grammar",
+                    f"--mode={config.grammar_transformation_mode}"
+                    f"--grammar-file={grammar_file}",
+                    f"--output-grammar-file={output_grammar_file}",
+                    # "--unfold-regexes",  TODO: probably don't want this
+                    # "--merge-literals",  TODO: probably don't want this
+                    "--ignore-grammar-cache"
+                    ]
+            logging.info("Launching %s", " ".join(args))
+            subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
 
 class GradleTask(object):
