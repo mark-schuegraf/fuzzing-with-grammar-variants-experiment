@@ -225,22 +225,19 @@ class RunTribbleTransformationMode(luigi.Task):
         return luigi.LocalTarget(work_dir / "transformed-grammars" / self.grammar_name)
 
     def run(self):
+        automaton_dir = work_dir / "tribble-automaton-cache" / self.format
         grammar_file = Path("grammars") / self.grammar_name
         tribble_jar = self.input().path
         with self.output().temporary_path() as out:
             args = ["java",
-                    # "-Xss100m",  TODO: probably don't want this
-                    # "-Xms256m",  TODO: probably don't want this
-                    # f"-Xmx{self.resources['ram']}g",  TODO: probably don't want this
                     "-jar", tribble_jar,
-                    # "--no-check-duplicate-alts",  TODO: probably don't want this
+                    f"--automaton-dir={automaton_dir}",
+                    "--ignore-grammar-cache",
+                    "--no-check-duplicate-alts",  # transformations are allowed to produce duplicate alternatives
                     "transform-grammar",
                     f"--mode={config.grammar_transformation_mode}"
                     f"--grammar-file={grammar_file}",
                     f"--output-grammar-file={out}",
-                    # "--unfold-regexes",  TODO: probably don't want this
-                    # "--merge-literals",  TODO: probably don't want this
-                    "--ignore-grammar-cache"
                     ]
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
@@ -261,23 +258,20 @@ class RunTribbleGenerationMode(luigi.Task):
 
     def run(self):
         subject = subjects[self.format]
+        automaton_dir = work_dir / "tribble-automaton-cache" / self.format
         transformed_grammar_file = self.input()["transformed-grammar"].path
         tribble_jar = self.input()["tribble"].path
         with self.output().temporary_path() as out:
             args = ["java",
-                    # "-Xss100m",  TODO: probably don't want this
-                    # "-Xms256m",  TODO: probably don't want this
-                    # f"-Xmx{self.resources['ram']}g",  TODO: probably don't want this
                     "-jar", tribble_jar,
-                    # "--no-check-duplicate-alts",  TODO: probably don't want this
+                    f"--automaton-dir={automaton_dir}",
+                    "--ignore-grammar-cache",
+                    "--no-check-duplicate-alts",  # transformations are allowed to produce duplicate alternatives
                     "generate",
                     f'--suffix={subject["suffix"]}',
                     f"--out-dir={out}",
                     f"--grammar-file={transformed_grammar_file}",
-                    f"--mode={config.input_generation_mode}",
-                    # "--unfold-regexes",  TODO: probably don't want this
-                    # "--merge-literals",  TODO: probably don't want this
-                    "--ignore-grammar-cache"
+                    f"--mode={config.input_generation_mode}"
                     ]
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
@@ -288,17 +282,6 @@ class RunSubjectOnDirectory(luigi.Task):
     input_directory: str = luigi.Parameter(description="The directory with inputs to feed into the subject.", positional=False)
     report_file: str = luigi.Parameter(description="The path to the .csv cumulative coverage report.", positional=False)
     subject_name: str = luigi.Parameter(description="The name of the subject to build", positional=False)
-
-    @property
-    def input_task(self) -> luigi.Task:  # TODO: why does this need to exist?
-        class OutputWrapper(luigi.Task):
-            # This parameter is significant for luigi to distinguish between different directories
-            input_dir: str = luigi.Parameter(description="Pretend that this task has output this dir")
-
-            def output(self):
-                return luigi.LocalTarget(self.input_dir)
-
-        return OutputWrapper(self.input_directory)
 
     def requires(self):
         return {
@@ -316,23 +299,15 @@ class RunSubjectOnDirectory(luigi.Task):
         input_path = self.input()["inputs"].path
         original_output = Path(self.output().path)
         args = ["java",
-                "-Xss10m",
-                "-Xms256m",
-                f"-Xmx{self.resources['ram']}g",
                 "-jar", subject_jar,
                 "--ignore-exceptions",
-                "--report-coverage", original_output,  # TODO: wrap in coverage_report()?
-                "--cumulative",  # TODO: confirm this is desired
+                "--report-coverage", original_output,
+                "--cumulative",
                 "--original-bytecode", original_jar,
                 input_path,
                 ]
         logging.info("Launching %s", " ".join(args))
         subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
-
-    # TODO: if the CoverageOutput mixin is needed, overwrite Task.complete() like so:
-    # def complete(self):
-    #     original_output = Path(self.output().path)
-    #     return self.coverage_report(original_output).exists()
 
 
 class ComputeCoverageStatistics(luigi.Task):
@@ -357,7 +332,7 @@ class ComputeCoverageStatistics(luigi.Task):
 
 
 # Currently does nothing, will later coordinate several runs
-class Experiment(luigi.Task):
+class Experiment(luigi.WrapperTask):
     """Transform all input grammars of the requested formats in the specified way. Then evaluate the coverage achieved by inputs generated from them."""
     # TODO support these later:
     # only_format: str = luigi.Parameter(description="Only run experiments for formats starting with this prefix.", positional=False, default="")
@@ -366,13 +341,9 @@ class Experiment(luigi.Task):
     def requires(self):
         return ComputeCoverageStatistics()
 
-    def output(self):
-        self.input()
-        # later have luigi.LocalTarget(work_dir / "evaluation" / ...)
-
 
 # TODO add run monitoring later
 if __name__ == '__main__':
-    luigi.BoolParameter.parsing = luigi.BoolParameter.EXPLICIT_PARSING  # TODO: why do we / do we need this?
+    luigi.BoolParameter.parsing = luigi.BoolParameter.EXPLICIT_PARSING
     logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", datefmt="%d.%m.%Y %H:%M:%S", level=logging.INFO, stream=sys.stdout)
-    luigi.run(main_task_cls=Experiment)
+    luigi.build(main_task_cls=Experiment)
