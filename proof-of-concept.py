@@ -138,11 +138,10 @@ class Subjects(object):
 
 
 class ExperimentConfig(luigi.Config):
-    experiment_dir: str = luigi.Parameter(description="The path to where all the experiments happen. Should be outside the repository.")
     tool_dir: str = luigi.Parameter(description="The path to the tool sources.")
+    experiment_dir: str = luigi.Parameter(description="The path to where all the experiments happen. Should be outside the repository.")
     grammar_transformation_mode: str = luigi.Parameter(description="Which mode to use when transforming grammars.")
-    input_generation_mode: str = luigi.Parameter(description="Which mode to use when generating the inputs from the transformed grammars.")
-    # TODO: support later:
+    input_generation_mode: str = luigi.Parameter(description="Which mode to use when generating inputs from the transformed grammars.")
     remove_randomly_generated_files: bool = luigi.BoolParameter(description="Remove the randomly generated files after we have acquired the execution metrics to save space.")
 
 
@@ -280,14 +279,14 @@ class RunTribbleGenerationMode(luigi.Task):
 class RunSubjectOnDirectory(luigi.Task):
     """Runs the given subject with the given inputs and produces a cumulative coverage report at the given location."""
     input_directory: str = luigi.Parameter(description="The directory with inputs to feed into the subject.", positional=False)
-    report_file: str = luigi.Parameter(description="The path to the .csv cumulative coverage report.", positional=False)
     subject_name: str = luigi.Parameter(description="The name of the subject to build", positional=False)
+    report_file: str = luigi.Parameter(description="The path to the .csv cumulative coverage report.", positional=False)
 
     def requires(self):
         return {
+            "inputs": RunTribbleGenerationMode(self.input_directory),
             "subject_jar": BuildSubject(self.subject_name),
-            "original_jar": DownloadOriginalBytecode(self.subject_name),
-            "inputs": self.input_task,
+            "original_jar": DownloadOriginalBytecode(self.subject_name)
         }
 
     def output(self):
@@ -325,6 +324,7 @@ class ComputeCoverageStatistics(luigi.Task):
                 }
 
     # TODO: calculate median branch coverage here by inspecting the last line of each subject coverage file using pandas
+    # TODO: clean up generated inputs after calculation, if remove_randomly_generated_files is set
     # def run(self): ...
 
     # def output(self):
@@ -342,8 +342,8 @@ class Experiment(luigi.WrapperTask):
         return ComputeCoverageStatistics()
 
 
-# TODO add run monitoring later
+# TODO: add run monitoring later
 if __name__ == '__main__':
     luigi.BoolParameter.parsing = luigi.BoolParameter.EXPLICIT_PARSING
     logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", datefmt="%d.%m.%Y %H:%M:%S", level=logging.INFO, stream=sys.stdout)
-    luigi.build(main_task_cls=Experiment)
+    luigi.build([Experiment])
