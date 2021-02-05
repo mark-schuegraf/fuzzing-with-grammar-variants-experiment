@@ -48,7 +48,7 @@ class Subjects(object):
             "json-antlr": self.json_antlr_subjects,
             "json-org": self.json_org_subjects,
             "url-antlr": self.url_antlr_subjects,
-            "url-w3c": self.uwl_w3c_subjects,
+            "url-w3c": self.url_w3c_subjects,
             "url-rfc": self.url_rfc_subjects,
             "url-living": self.url_living_standard_subjects,
             "expr": self.expr_subjects,
@@ -81,7 +81,7 @@ class Subjects(object):
         }
 
     @property
-    def uwl_w3c_subjects(self) -> Dict[str, Any]:
+    def url_w3c_subjects(self) -> Dict[str, Any]:
         return {
             "suffix": ".txt",
             "grammar": "url/url-w3c.scala",
