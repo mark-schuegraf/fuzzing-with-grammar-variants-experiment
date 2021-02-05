@@ -4,7 +4,6 @@
 """
 This module contains luigi tasks to run the grammar transformation experiments.
 """
-from collections import ChainMap
 import logging
 import os
 from pathlib import Path
@@ -142,6 +141,7 @@ class ExperimentConfig(luigi.Config):
     experiment_dir: str = luigi.Parameter(description="The path to where all the experiments happen. Should be outside the repository.")
     grammar_transformation_mode: str = luigi.Parameter(description="Which mode to use when transforming grammars.")
     input_generation_mode: str = luigi.Parameter(description="Which mode to use when generating inputs from the transformed grammars.")
+    only_format: str = luigi.Parameter(description="Only run experiments for formats starting with this prefix.")
     remove_randomly_generated_files: bool = luigi.BoolParameter(description="Remove the randomly generated files after we have acquired the execution metrics to save space.")
 
 
@@ -149,7 +149,6 @@ config = ExperimentConfig()
 work_dir: Path = Path(config.experiment_dir)
 tool_dir: Path = Path(config.tool_dir)
 subjects: Dict[str, Dict[str, Any]] = Subjects().all_subjects  # Change subject subset selection statically here
-drivers = ChainMap(*[d["drivers"] for d in subjects.values()])  # TODO: probably don't want this
 
 
 class GradleTask(object):
@@ -296,11 +295,11 @@ class RunSubjectOnDirectory(luigi.Task):
         subject_jar = self.input()["subject_jar"].path
         original_jar = self.input()["original_jar"].path
         input_path = self.input()["inputs"].path
-        original_output = Path(self.output().path)
+        output_path = self.output().path
         args = ["java",
                 "-jar", subject_jar,
                 "--ignore-exceptions",
-                "--report-coverage", original_output,
+                "--report-coverage", output_path,
                 "--cumulative",
                 "--original-bytecode", original_jar,
                 input_path,
@@ -312,30 +311,42 @@ class RunSubjectOnDirectory(luigi.Task):
 class ComputeCoverageStatistics(luigi.Task):
     """Computes conventional statistics on the coverage files."""
 
-    # TODO: apply bleach to eyes after reading this. WIP, broken in every regard.
-    #  + What it should do: for each format, feed the corresponding inputs to all compatible drivers
+    @property
+    def _selected_subjects(self) -> Dict[str, List[str]]:
+        subject_info = {fmt: list(info["drivers"].keys()) for fmt, info in subjects.items() if fmt.startswith(config.only_format)}
+        if not subject_info:
+            raise ValueError(f"There are no formats starting with {config.only_format}!")
+        return subject_info
+
     def requires(self):
-        return {
-                subj_name: RunSubjectOnDirectory(input_directory=str(work_dir / "inputs" / subjects[subj_name]["suffix"]),
-                                                 report_file=str(work_dir / "inputs" / f"{subj_name}.coverage.csv"),
-                                                 subject_name=subj_name)
-                for subj_name
-                in drivers
-                }
+        d = {
+            fmt:    {
+                    driver:
+                    RunSubjectOnDirectory(input_directory=str(work_dir / "inputs"
+                                                                       / str(config.grammar_transformation_mode)
+                                                                       / fmt / driver),
+                                          report_file=str(work_dir / "results" / "raw-coverages"
+                                                                     / str(config.grammar_transformation_mode)
+                                                                     / fmt / f"{driver}.coverage.csv"),
+                                          subject_name=driver)
+                    for driver
+                    in drivers
+                    }
+            for fmt, drivers
+            in self._selected_subjects.items()
+            }
+        return d
 
     # TODO: calculate median branch coverage here by inspecting the last line of each subject coverage file using pandas
     # TODO: clean up generated inputs after calculation, if remove_randomly_generated_files is set
     # def run(self): ...
-
-    # def output(self):
-    #    return luigi.LocalTarget(work_dir / "evaluation" / "median-coverages.csv" )
+    # def output(self): ...
 
 
-# Currently does nothing, will later coordinate several runs
+# Will later coordinate several runs and call the evaluation report producer
 class Experiment(luigi.WrapperTask):
     """Transform all input grammars of the requested formats in the specified way. Then evaluate the coverage achieved by inputs generated from them."""
-    # TODO support these later:
-    # only_format: str = luigi.Parameter(description="Only run experiments for formats starting with this prefix.", positional=False, default="")
+    # For when we actually generate reports:
     # report_name: str = luigi.Parameter(description="The name of the report file.", positional=False, default="report")
 
     def requires(self):
@@ -346,4 +357,4 @@ class Experiment(luigi.WrapperTask):
 if __name__ == '__main__':
     luigi.BoolParameter.parsing = luigi.BoolParameter.EXPLICIT_PARSING
     logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", datefmt="%d.%m.%Y %H:%M:%S", level=logging.INFO, stream=sys.stdout)
-    luigi.build([Experiment])
+    luigi.build([Experiment()])
