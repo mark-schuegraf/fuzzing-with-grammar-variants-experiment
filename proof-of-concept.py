@@ -166,11 +166,11 @@ class BuildSubject(luigi.Task, GradleTask):
     subject_name: str = luigi.Parameter(description="The name of the subject to build", positional=False)
 
     def output(self):
-        return luigi.LocalTarget(work_dir / "tools" / "subjects" / self.subject_name / f"{self.subject_name}-subject.jar")
+        return luigi.LocalTarget(tool_dir / "build" / "subjects" / f"{self.subject_name}-subject.jar")
 
     def run(self):
         subprocess.run(self.gradlew("build", "-p", self.subject_name), check=True, cwd=tool_dir / "subjects", stdout=subprocess.DEVNULL)
-        artifact = tool_dir / "subjects" / self.subject_name / "build" / "libs" / f"{self.subject_name}-subject.jar"
+        artifact = tool_dir / "build" / "subjects" / f"{self.subject_name}-subject.jar"
         os.makedirs(os.path.dirname(self.output().path), exist_ok=True)
         shutil.copy(str(artifact), self.output().path)
 
@@ -180,11 +180,11 @@ class DownloadOriginalBytecode(luigi.Task, GradleTask):
     subject_name: str = luigi.Parameter(description="The name of the subject to build", positional=False)
 
     def output(self):
-        return luigi.LocalTarget(work_dir / "tools" / "subjects" / self.subject_name / f"{self.subject_name}-original.jar")
+        return luigi.LocalTarget(tool_dir / "build" / "subjects" / f"{self.subject_name}-original.jar")
 
     def run(self):
         subprocess.run(self.gradlew("downloadOriginalJar", "-p", self.subject_name), check=True, cwd=tool_dir / "subjects", stdout=subprocess.DEVNULL)
-        artifact = tool_dir / "subjects" / self.subject_name / "build" / "libs" / f"{self.subject_name}-original.jar"
+        artifact = tool_dir / "build" / "subjects" / f"{self.subject_name}-original.jar"
         os.makedirs(os.path.dirname(self.output().path), exist_ok=True)
         shutil.copy(str(artifact), self.output().path)
 
@@ -206,25 +206,17 @@ class BuildTribble(luigi.Task, GradleTask):
 class RunTribbleTransformationMode(luigi.Task):
     """Transforms one grammar into another with tribble."""
     format: str = luigi.Parameter(description="The name of the format directory (e.g. json)", positional=False)
-    # TODO: do we need a parameter for the output grammar file? Probably not.
-    #  + At present, name output grammar like input grammar. Becomes a problem when multiple transformations are applied.
-    #  + But then can also make new directory for each set of transformed grammars.
-    # output_grammar_file: str = luigi.Parameter(description="Where to put the transformed grammar file.", positional=False)
-
-    @property
-    def grammar_name(self) -> str:
-        subject = subjects[self.format]
-        return subject["grammar"]
 
     def requires(self):
         return BuildTribble()
 
     def output(self):
-        return luigi.LocalTarget(work_dir / "transformed-grammars" / self.grammar_name)
+        return luigi.LocalTarget(work_dir / "transformed-grammars" / config.grammar_transformation_mode
+                                 / subjects[self.format]["grammar"])
 
     def run(self):
         automaton_dir = work_dir / "tribble-automaton-cache" / self.format
-        grammar_file = Path("grammars") / self.grammar_name
+        grammar_file = Path("grammars") / subjects[self.format]["grammar"]
         tribble_jar = self.input().path
         with self.output().temporary_path() as out:
             args = ["java",
@@ -252,7 +244,7 @@ class RunTribbleGenerationMode(luigi.Task):
         }
 
     def output(self):
-        return luigi.LocalTarget(work_dir / "inputs" / self.format)
+        return luigi.LocalTarget(work_dir / "inputs" / config.grammar_transformation_mode / self.format)
 
     def run(self):
         subject = subjects[self.format]
@@ -275,27 +267,27 @@ class RunTribbleGenerationMode(luigi.Task):
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
 
-class RunSubjectOnDirectory(luigi.Task):
+class RunSubject(luigi.Task):
     """Runs the given subject with the given inputs and produces a cumulative coverage report at the given location."""
-    input_directory: str = luigi.Parameter(description="The directory with inputs to feed into the subject.", positional=False)
+    format: str = luigi.Parameter(description="The name of the format directory (e.g. json) containing inputs", positional=False)
     subject_name: str = luigi.Parameter(description="The name of the subject to build", positional=False)
-    report_file: str = luigi.Parameter(description="The path to the .csv cumulative coverage report.", positional=False)
 
     def requires(self):
         return {
-            "inputs": RunTribbleGenerationMode(self.input_directory),
+            "inputs": RunTribbleGenerationMode(self.format),
             "subject_jar": BuildSubject(self.subject_name),
             "original_jar": DownloadOriginalBytecode(self.subject_name)
         }
 
     def output(self):
-        return luigi.LocalTarget(self.report_file)
+        return luigi.LocalTarget(work_dir / "results" / "raw" / config.grammar_transformation_mode
+                                 / f"{self.subject_name}.coverage.csv")
 
     def run(self):
+        output_path = self.output().path
+        input_path = self.input()["inputs"].path
         subject_jar = self.input()["subject_jar"].path
         original_jar = self.input()["original_jar"].path
-        input_path = self.input()["inputs"].path
-        output_path = self.output().path
         args = ["java",
                 "-jar", subject_jar,
                 "--ignore-exceptions",
@@ -322,13 +314,8 @@ class ComputeCoverageStatistics(luigi.Task):
         d = {
             fmt:    {
                     driver:
-                    RunSubjectOnDirectory(input_directory=str(work_dir / "inputs"
-                                                                       / str(config.grammar_transformation_mode)
-                                                                       / fmt / driver),
-                                          report_file=str(work_dir / "results" / "raw-coverages"
-                                                                     / str(config.grammar_transformation_mode)
-                                                                     / fmt / f"{driver}.coverage.csv"),
-                                          subject_name=driver)
+                    RunSubject(format=fmt,
+                               subject_name=driver)
                     for driver
                     in drivers
                     }
