@@ -215,7 +215,7 @@ class RunTribbleTransformationMode(luigi.Task):
                                  / subjects[self.format]["grammar"])
 
     def run(self):
-        automaton_dir = work_dir / "tribble-automaton-cache" / self.format
+        automaton_dir = tool_dir / "tribble-automaton-cache" / self.format
         grammar_file = Path("grammars") / subjects[self.format]["grammar"]
         tribble_jar = self.input().path
         with self.output().temporary_path() as out:
@@ -336,12 +336,12 @@ class Experiment(luigi.WrapperTask):
     # For when we actually generate reports:
     # report_name: str = luigi.Parameter(description="The name of the report file.", positional=False, default="report")
 
-    def requires(self):
-        return ComputeCoverageStatistics()
+    #def requires(self):
+    #    return ComputeCoverageStatistics()
 
 
 # TODO: add run monitoring later
 if __name__ == '__main__':
     luigi.BoolParameter.parsing = luigi.BoolParameter.EXPLICIT_PARSING
     logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", datefmt="%d.%m.%Y %H:%M:%S", level=logging.INFO, stream=sys.stdout)
-    luigi.build([Experiment()])
+    luigi.run(main_task_cls=Experiment)
