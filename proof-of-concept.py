@@ -170,7 +170,7 @@ class BuildSubject(luigi.Task, GradleTask):
 
     def run(self):
         subprocess.run(self.gradlew("build", "-p", self.subject_name), check=True, cwd=tool_dir / "subjects", stdout=subprocess.DEVNULL)
-        artifact = tool_dir / "build" / "subjects" / f"{self.subject_name}-subject.jar"
+        artifact = tool_dir / "subjects" / self.subject_name / "build" / "libs" / f"{self.subject_name}-subject.jar"
         os.makedirs(os.path.dirname(self.output().path), exist_ok=True)
         shutil.copy(str(artifact), self.output().path)
 
@@ -184,7 +184,7 @@ class DownloadOriginalBytecode(luigi.Task, GradleTask):
 
     def run(self):
         subprocess.run(self.gradlew("downloadOriginalJar", "-p", self.subject_name), check=True, cwd=tool_dir / "subjects", stdout=subprocess.DEVNULL)
-        artifact = tool_dir / "build" / "subjects" / f"{self.subject_name}-original.jar"
+        artifact = tool_dir / "subjects" / self.subject_name / "build" / "libs" / f"{self.subject_name}-original.jar"
         os.makedirs(os.path.dirname(self.output().path), exist_ok=True)
         shutil.copy(str(artifact), self.output().path)
 
@@ -193,7 +193,7 @@ class BuildTribble(luigi.Task, GradleTask):
     """Builds the tribble jar and copies it into the working directory."""
 
     def output(self):
-        return luigi.LocalTarget(work_dir / "tools" / "tribble.jar")
+        return luigi.LocalTarget(tool_dir / "build" / "tribble.jar")
 
     def run(self):
         subprocess.run(self.gradlew("assemble", "-p", "tribble-tool"), check=True, cwd=tool_dir / "tribble", stdout=subprocess.DEVNULL)
