@@ -4,19 +4,19 @@
 """
 This module contains luigi tasks to run the grammar transformation experiments.
 """
+import hashlib
 import logging
 import os
 from pathlib import Path
 import platform
-from pprint import pformat
+import random
 import shutil
 import subprocess
 import sys
-from typing import Any, Dict, List
+from typing import Any, Dict, Final, List
 
 import luigi
 from luigi.util import inherits, requires
-import pandas as pd
 
 
 def remove_tree(path: Path) -> None:
@@ -27,6 +27,27 @@ def remove_tree(path: Path) -> None:
         path.rmdir()
     else:
         path.unlink()
+
+
+class StableRandomness(object):
+    """This mixin provides a method for generating random ints from a seed and a list of strings."""
+    # For use with random.randrange()
+    # Not using sys.maxsize because it might differ depending on the environment
+    MAX_RND_INT: Final[int] = 2 ** 32 - 1
+
+    @staticmethod
+    def get_random(seed: int, *args: str) -> random.Random:
+        """Get a random.Random instance initialized with a seed derived from the the given args."""
+        # compute a stable hashcode of arguments as a string
+        concat = ''.join(args)
+        hash_code = int(hashlib.sha1(concat.encode('utf-8')).hexdigest(), 16) % (10 ** 8)
+        return random.Random(seed + hash_code)
+
+    @staticmethod
+    def random_int(seed: int, *args: str) -> int:
+        """Get a random int that is uniquely derived from the given args."""
+        rnd = StableRandomness.get_random(seed, *args)
+        return rnd.randrange(StableRandomness.MAX_RND_INT)
 
 
 class Subjects(object):
@@ -215,6 +236,7 @@ class RunTribbleTransformationMode(luigi.Task):
     """Transforms one grammar into another with tribble."""
     grammar_transformation_mode: str = luigi.Parameter(description="Which mode to use when transforming grammars.")
     format: str = luigi.Parameter(description="The name of the format directory (e.g. json)", positional=False)
+    tribble_transformation_seed: str = luigi.IntParameter(description="The seed for this tribble transformation run", positional=False, significant=False)
 
     def output(self):
         return luigi.LocalTarget(work_dir / "transformed-grammars" / self.grammar_transformation_mode
@@ -224,9 +246,13 @@ class RunTribbleTransformationMode(luigi.Task):
         tribble_jar = self.input().path
         automaton_dir = tool_dir / "tribble-automaton-cache" / self.format
         grammar_file = Path("grammars") / subjects[self.format]["grammar"]
+        # also make the seed depend on the output path starting from work_dir
+        rel_output_path = Path(self.output().path).relative_to(work_dir)
+        random_seed = self.random_int(self.tribble_transformation_seed, self.format, self.generation_mode, *rel_output_path.parts)
         with self.output().temporary_path() as out:
             args = ["java",
                     "-jar", tribble_jar,
+                    f"--random-seed={random_seed}",
                     f"--automaton-dir={automaton_dir}",
                     "--ignore-grammar-cache",
                     "--no-check-duplicate-alts",  # transformations are allowed to produce duplicate alternatives
@@ -243,6 +269,7 @@ class RunTribbleTransformationMode(luigi.Task):
 class RunTribbleGenerationMode(luigi.Task):
     """Generates inputs with tribble using a transformed grammar."""
     input_generation_mode: str = luigi.Parameter(description="Which mode to use when generating inputs.")
+    tribble_generation_seed: str = luigi.IntParameter(description="The seed for this tribble generation run", positional=False, significant=False)
 
     def output(self):
         return luigi.LocalTarget(work_dir / "inputs" / self.grammar_transformation_mode / self.format)
@@ -252,9 +279,13 @@ class RunTribbleGenerationMode(luigi.Task):
         transformed_grammar_file = self.input()[1].path
         automaton_dir = work_dir / "tribble-automaton-cache" / self.format
         subject = subjects[self.format]
+        # also make the seed depend on the output path starting from work_dir
+        rel_output_path = Path(self.output().path).relative_to(work_dir)
+        random_seed = self.random_int(self.tribble_generation_seed, self.format, self.generation_mode, *rel_output_path.parts)
         with self.output().temporary_path() as out:
             args = ["java",
                     "-jar", tribble_jar,
+                    f"--random-seed={random_seed}",
                     f"--automaton-dir={automaton_dir}",
                     "--ignore-grammar-cache",
                     "--no-check-duplicate-alts",  # transformations are allowed to produce duplicate alternatives
@@ -301,6 +332,7 @@ class ComputeCoverageStatistics(luigi.Task):
     """Computes conventional statistics on the coverage files."""
     only_format: str = luigi.Parameter(description="Only run experiments for formats starting with this prefix.")
     report_name: str = luigi.Parameter(description="The name of the report file.", positional=False, default="report")
+    random_seed: int = luigi.IntParameter(description="The main seed for this experiment. All other random seeds will be derived from it.", positional=False)
 
     @property
     def _selected_subjects(self) -> Dict[str, List[str]]:
@@ -317,7 +349,15 @@ class ComputeCoverageStatistics(luigi.Task):
     def requires(self):
         d = {
             fmt:    {
-                    driver: self.clone(RunSubject, format=fmt, subject_name=driver)
+                    driver: self.clone(
+                                      RunSubject,
+                                      format=fmt,
+                                      subject_name=driver,
+                                      tribble_generation_seed=self.random_int(
+                                          self.random_seed, "tribble_generation_seed", fmt, driver),
+                                      tribble_transformation_seed=self.random_int(
+                                          self.random_seed, "tribble_transformation_seed", fmt, driver)
+                                      )
                     for driver
                     in drivers
                     }
@@ -325,7 +365,6 @@ class ComputeCoverageStatistics(luigi.Task):
             in self._selected_subjects.items()
             }
         return d
-
 
     # TODO: calculate median branch coverage here by inspecting the last line of each subject coverage file using pandas
     # def run(self): ...
