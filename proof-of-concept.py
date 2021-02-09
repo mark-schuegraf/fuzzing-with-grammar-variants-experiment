@@ -15,7 +15,18 @@ import sys
 from typing import Any, Dict, List
 
 import luigi
+from luigi.util import inherits, requires
 import pandas as pd
+
+
+def remove_tree(path: Path) -> None:
+    """Recursively removes the entire file tree under and including the given path."""
+    if path.is_dir():
+        for child in path.iterdir():
+            remove_tree(child)
+        path.rmdir()
+    else:
+        path.unlink()
 
 
 class Subjects(object):
@@ -139,16 +150,12 @@ class Subjects(object):
 class ExperimentConfig(luigi.Config):
     tool_dir: str = luigi.Parameter(description="The path to the tool sources.")
     experiment_dir: str = luigi.Parameter(description="The path to where all the experiments happen. Should be outside the repository.")
-    grammar_transformation_mode: str = luigi.Parameter(description="Which mode to use when transforming grammars.")
-    input_generation_mode: str = luigi.Parameter(description="Which mode to use when generating inputs from the transformed grammars.")
-    only_format: str = luigi.Parameter(description="Only run experiments for formats starting with this prefix.")
-    remove_randomly_generated_files: bool = luigi.BoolParameter(description="Remove the randomly generated files after we have acquired the execution metrics to save space.")
 
 
 config = ExperimentConfig()
 work_dir: Path = Path(config.experiment_dir)
 tool_dir: Path = Path(config.tool_dir)
-subjects: Dict[str, Dict[str, Any]] = Subjects().all_subjects  # Change subject subset selection statically here
+subjects: Dict[str, Dict[str, Any]] = Subjects().all_subjects
 
 
 class GradleTask(object):
@@ -203,21 +210,20 @@ class BuildTribble(luigi.Task, GradleTask):
         shutil.copy(str(artifact), self.output().path)
 
 
+@requires(BuildTribble)
 class RunTribbleTransformationMode(luigi.Task):
     """Transforms one grammar into another with tribble."""
+    grammar_transformation_mode: str = luigi.Parameter(description="Which mode to use when transforming grammars.")
     format: str = luigi.Parameter(description="The name of the format directory (e.g. json)", positional=False)
 
-    def requires(self):
-        return BuildTribble()
-
     def output(self):
-        return luigi.LocalTarget(work_dir / "transformed-grammars" / config.grammar_transformation_mode
+        return luigi.LocalTarget(work_dir / "transformed-grammars" / self.grammar_transformation_mode
                                  / subjects[self.format]["grammar"])
 
     def run(self):
+        tribble_jar = self.input().path
         automaton_dir = tool_dir / "tribble-automaton-cache" / self.format
         grammar_file = Path("grammars") / subjects[self.format]["grammar"]
-        tribble_jar = self.input().path
         with self.output().temporary_path() as out:
             args = ["java",
                     "-jar", tribble_jar,
@@ -225,7 +231,7 @@ class RunTribbleTransformationMode(luigi.Task):
                     "--ignore-grammar-cache",
                     "--no-check-duplicate-alts",  # transformations are allowed to produce duplicate alternatives
                     "transform-grammar",
-                    f"--mode={config.grammar_transformation_mode}"
+                    f"--mode={self.grammar_transformation_mode}"
                     f"--grammar-file={grammar_file}",
                     f"--output-grammar-file={out}",
                     ]
@@ -233,24 +239,19 @@ class RunTribbleTransformationMode(luigi.Task):
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
 
+@requires(BuildTribble, RunTribbleTransformationMode)
 class RunTribbleGenerationMode(luigi.Task):
     """Generates inputs with tribble using a transformed grammar."""
-    format: str = luigi.Parameter(description="The name of the format directory (e.g. json)", positional=False)
-
-    def requires(self):
-        return {
-            "transformed-grammar": RunTribbleTransformationMode(self.format),
-            "tribble": BuildTribble()
-        }
+    input_generation_mode: str = luigi.Parameter(description="Which mode to use when generating inputs.")
 
     def output(self):
-        return luigi.LocalTarget(work_dir / "inputs" / config.grammar_transformation_mode / self.format)
+        return luigi.LocalTarget(work_dir / "inputs" / self.grammar_transformation_mode / self.format)
 
     def run(self):
-        subject = subjects[self.format]
+        tribble_jar = self.input()[0].path
+        transformed_grammar_file = self.input()[1].path
         automaton_dir = work_dir / "tribble-automaton-cache" / self.format
-        transformed_grammar_file = self.input()["transformed-grammar"].path
-        tribble_jar = self.input()["tribble"].path
+        subject = subjects[self.format]
         with self.output().temporary_path() as out:
             args = ["java",
                     "-jar", tribble_jar,
@@ -261,33 +262,26 @@ class RunTribbleGenerationMode(luigi.Task):
                     f'--suffix={subject["suffix"]}',
                     f"--out-dir={out}",
                     f"--grammar-file={transformed_grammar_file}",
-                    f"--mode={config.input_generation_mode}"
+                    f"--mode={self.input_generation_mode}"
                     ]
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
 
+@requires(BuildSubject, DownloadOriginalBytecode, RunTribbleGenerationMode)
 class RunSubject(luigi.Task):
     """Runs the given subject with the given inputs and produces a cumulative coverage report at the given location."""
-    format: str = luigi.Parameter(description="The name of the format directory (e.g. json) containing inputs", positional=False)
-    subject_name: str = luigi.Parameter(description="The name of the subject to build", positional=False)
-
-    def requires(self):
-        return {
-            "inputs": RunTribbleGenerationMode(self.format),
-            "subject_jar": BuildSubject(self.subject_name),
-            "original_jar": DownloadOriginalBytecode(self.subject_name)
-        }
+    remove_randomly_generated_files: bool = luigi.BoolParameter(description="Remove the randomly generated files after we have acquired the execution metrics to save space.")
 
     def output(self):
-        return luigi.LocalTarget(work_dir / "results" / "raw" / config.grammar_transformation_mode
+        return luigi.LocalTarget(work_dir / "results" / "raw" / self.grammar_transformation_mode
                                  / f"{self.subject_name}.coverage.csv")
 
     def run(self):
+        subject_jar = self.input()[0].path
+        original_jar = self.input()[1].path
+        input_path = self.input()[2].path
         output_path = self.output().path
-        input_path = self.input()["inputs"].path
-        subject_jar = self.input()["subject_jar"].path
-        original_jar = self.input()["original_jar"].path
         args = ["java",
                 "-jar", subject_jar,
                 "--ignore-exceptions",
@@ -298,24 +292,32 @@ class RunSubject(luigi.Task):
                 ]
         logging.info("Launching %s", " ".join(args))
         subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
+        if self.remove_randomly_generated_files:
+            remove_tree(input_path)
 
 
+@inherits(RunSubject)
 class ComputeCoverageStatistics(luigi.Task):
     """Computes conventional statistics on the coverage files."""
+    only_format: str = luigi.Parameter(description="Only run experiments for formats starting with this prefix.")
+    report_name: str = luigi.Parameter(description="The name of the report file.", positional=False, default="report")
 
     @property
     def _selected_subjects(self) -> Dict[str, List[str]]:
-        subject_info = {fmt: list(info["drivers"].keys()) for fmt, info in subjects.items() if fmt.startswith(config.only_format)}
+        subject_info = {
+                        fmt: list(info["drivers"].keys())
+                        for fmt, info
+                        in subjects.items()
+                        if fmt.startswith(self.only_format)
+                        }
         if not subject_info:
-            raise ValueError(f"There are no formats starting with {config.only_format}!")
+            raise ValueError(f"There are no formats starting with {self.only_format}!")
         return subject_info
 
     def requires(self):
         d = {
             fmt:    {
-                    driver:
-                    RunSubject(format=fmt,
-                               subject_name=driver)
+                    driver: self.clone(RunSubject, format=fmt, subject_name=driver)
                     for driver
                     in drivers
                     }
@@ -324,24 +326,22 @@ class ComputeCoverageStatistics(luigi.Task):
             }
         return d
 
+
     # TODO: calculate median branch coverage here by inspecting the last line of each subject coverage file using pandas
-    # TODO: clean up generated inputs after calculation, if remove_randomly_generated_files is set
     # def run(self): ...
+
+    # TODO: output median coverage report file here with name self.report_name
     # def output(self): ...
 
 
 # Will later coordinate several runs and call the evaluation report producer
+@requires(ComputeCoverageStatistics)
 class Experiment(luigi.WrapperTask):
     """Transform all input grammars of the requested formats in the specified way. Then evaluate the coverage achieved by inputs generated from them."""
-    # For when we actually generate reports:
-    # report_name: str = luigi.Parameter(description="The name of the report file.", positional=False, default="report")
-
-    #def requires(self):
-    #    return ComputeCoverageStatistics()
 
 
-# TODO: add run monitoring later
 if __name__ == '__main__':
     luigi.BoolParameter.parsing = luigi.BoolParameter.EXPLICIT_PARSING
     logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", datefmt="%d.%m.%Y %H:%M:%S", level=logging.INFO, stream=sys.stdout)
+    # TODO: add run monitoring later
     luigi.run(main_task_cls=Experiment)
