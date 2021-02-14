@@ -7,16 +7,16 @@ This module contains luigi tasks to run the grammar transformation experiments.
 import hashlib
 import logging
 import os
-from pathlib import Path
 import platform
 import random
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any, Dict, Final, List
 
 import luigi
-from luigi.util import inherits, requires
+from luigi.util import requires
 
 
 def remove_tree(path: Path) -> None:
@@ -170,7 +170,8 @@ class Subjects(object):
 
 class ExperimentConfig(luigi.Config):
     tool_dir: str = luigi.Parameter(description="The path to the tool sources.")
-    experiment_dir: str = luigi.Parameter(description="The path to where all the experiments happen. Should be outside the repository.")
+    experiment_dir: str = luigi.Parameter(
+        description="The path to where all the experiments happen. Should be outside the repository.")
 
 
 config = ExperimentConfig()
@@ -191,13 +192,14 @@ class GradleTask(object):
 
 class BuildSubject(luigi.Task, GradleTask):
     """Builds the given subject and copies it into the working directory."""
-    subject_name: str = luigi.Parameter(description="The name of the subject to build", positional=False)
+    subject_name: str = luigi.Parameter(description="The name of the subject to build")
 
     def output(self):
-        return luigi.LocalTarget(tool_dir / "build" / "subjects" / f"{self.subject_name}-subject.jar")
+        return luigi.LocalTarget(work_dir / "tools" / "build" / "subjects" / f"{self.subject_name}-subject.jar")
 
     def run(self):
-        subprocess.run(self.gradlew("build", "-p", self.subject_name), check=True, cwd=tool_dir / "subjects", stdout=subprocess.DEVNULL)
+        subprocess.run(self.gradlew("build", "-p", self.subject_name), check=True, cwd=tool_dir / "subjects",
+                       stdout=subprocess.DEVNULL)
         artifact = tool_dir / "subjects" / self.subject_name / "build" / "libs" / f"{self.subject_name}-subject.jar"
         os.makedirs(os.path.dirname(self.output().path), exist_ok=True)
         shutil.copy(str(artifact), self.output().path)
@@ -205,13 +207,14 @@ class BuildSubject(luigi.Task, GradleTask):
 
 class DownloadOriginalBytecode(luigi.Task, GradleTask):
     """Downloads the unmodified bytecode of the subject and places it into the working directory."""
-    subject_name: str = luigi.Parameter(description="The name of the subject to build", positional=False)
+    subject_name: str = luigi.Parameter(description="The name of the subject to build")
 
     def output(self):
-        return luigi.LocalTarget(tool_dir / "build" / "subjects" / f"{self.subject_name}-original.jar")
+        return luigi.LocalTarget(work_dir / "tools" / "build" / "subjects" / f"{self.subject_name}-original.jar")
 
     def run(self):
-        subprocess.run(self.gradlew("downloadOriginalJar", "-p", self.subject_name), check=True, cwd=tool_dir / "subjects", stdout=subprocess.DEVNULL)
+        subprocess.run(self.gradlew("downloadOriginalJar", "-p", self.subject_name), check=True,
+                       cwd=tool_dir / "subjects", stdout=subprocess.DEVNULL)
         artifact = tool_dir / "subjects" / self.subject_name / "build" / "libs" / f"{self.subject_name}-original.jar"
         os.makedirs(os.path.dirname(self.output().path), exist_ok=True)
         shutil.copy(str(artifact), self.output().path)
@@ -221,10 +224,11 @@ class BuildTribble(luigi.Task, GradleTask):
     """Builds the tribble jar and copies it into the working directory."""
 
     def output(self):
-        return luigi.LocalTarget(tool_dir / "build" / "tribble.jar")
+        return luigi.LocalTarget(work_dir / "tools" / "build" / "tribble.jar")
 
     def run(self):
-        subprocess.run(self.gradlew("assemble", "-p", "tribble-tool"), check=True, cwd=tool_dir / "tribble", stdout=subprocess.DEVNULL)
+        subprocess.run(self.gradlew("assemble", "-p", "tribble-tool"), check=True, cwd=tool_dir / "tribble",
+                       stdout=subprocess.DEVNULL)
         build_dir = tool_dir / "tribble" / "tribble-tool" / "build" / "libs"
         artifact = next(build_dir.glob("**/tribble*.jar"))
         os.makedirs(os.path.dirname(self.output().path), exist_ok=True)
@@ -232,44 +236,47 @@ class BuildTribble(luigi.Task, GradleTask):
 
 
 @requires(BuildTribble)
-class RunTribbleTransformationMode(luigi.Task):
+class RunTribbleTransformationMode(luigi.Task, StableRandomness):
     """Transforms one grammar into another with tribble."""
     grammar_transformation_mode: str = luigi.Parameter(description="Which mode to use when transforming grammars.")
-    format: str = luigi.Parameter(description="The name of the format directory (e.g. json)", positional=False)
-    tribble_transformation_seed: str = luigi.IntParameter(description="The seed for this tribble transformation run", positional=False, significant=False)
+    format: str = luigi.Parameter(description="The format corresponding to the grammar to test.")
+    tribble_transformation_seed: int = luigi.IntParameter(description="The seed for this tribble transformation run",
+                                                          positional=False, significant=False)
 
     def output(self):
         return luigi.LocalTarget(work_dir / "transformed-grammars" / self.grammar_transformation_mode
-                                 / subjects[self.format]["grammar"])
+                                 / f"{self.format}.scala")
 
     def run(self):
         tribble_jar = self.input().path
-        automaton_dir = tool_dir / "tribble-automaton-cache" / self.format
-        grammar_file = Path("grammars") / subjects[self.format]["grammar"]
+        automaton_dir = work_dir / "tools" / "tribble-automaton-cache" / self.format
+        grammar_file = work_dir / "grammars" / subjects[self.format]["grammar"]
         # also make the seed depend on the output path starting from work_dir
         rel_output_path = Path(self.output().path).relative_to(work_dir)
-        random_seed = self.random_int(self.tribble_transformation_seed, self.format, self.generation_mode, *rel_output_path.parts)
+        random_seed = self.random_int(self.tribble_transformation_seed, self.format, self.grammar_transformation_mode,
+                                      *rel_output_path.parts)
         with self.output().temporary_path() as out:
             args = ["java",
                     "-jar", tribble_jar,
-                    f"--random-seed={random_seed}",
+                    # f"--random-seed={random_seed}", TODO turn me on later
                     f"--automaton-dir={automaton_dir}",
                     "--ignore-grammar-cache",
                     "--no-check-duplicate-alts",  # transformations are allowed to produce duplicate alternatives
                     "transform-grammar",
-                    f"--mode={self.grammar_transformation_mode}"
-                    f"--grammar-file={grammar_file}",
-                    f"--output-grammar-file={out}",
+                    f"--mode={self.grammar_transformation_mode}",
+                    str(grammar_file),
+                    out,
                     ]
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
 
 @requires(BuildTribble, RunTribbleTransformationMode)
-class RunTribbleGenerationMode(luigi.Task):
+class RunTribbleGenerationMode(luigi.Task, StableRandomness):
     """Generates inputs with tribble using a transformed grammar."""
     input_generation_mode: str = luigi.Parameter(description="Which mode to use when generating inputs.")
-    tribble_generation_seed: str = luigi.IntParameter(description="The seed for this tribble generation run", positional=False, significant=False)
+    tribble_generation_seed: int = luigi.IntParameter(description="The seed for this tribble generation run",
+                                                      positional=False, significant=False)
 
     def output(self):
         return luigi.LocalTarget(work_dir / "inputs" / self.grammar_transformation_mode / self.format)
@@ -277,11 +284,12 @@ class RunTribbleGenerationMode(luigi.Task):
     def run(self):
         tribble_jar = self.input()[0].path
         transformed_grammar_file = self.input()[1].path
-        automaton_dir = work_dir / "tribble-automaton-cache" / self.format
-        subject = subjects[self.format]
+        automaton_dir = work_dir / "tools" / "tribble-automaton-cache" / self.format
+        format_info = subjects[self.format]
         # also make the seed depend on the output path starting from work_dir
         rel_output_path = Path(self.output().path).relative_to(work_dir)
-        random_seed = self.random_int(self.tribble_generation_seed, self.format, self.generation_mode, *rel_output_path.parts)
+        random_seed = self.random_int(self.tribble_generation_seed, self.format, self.input_generation_mode,
+                                      *rel_output_path.parts)
         with self.output().temporary_path() as out:
             args = ["java",
                     "-jar", tribble_jar,
@@ -290,10 +298,10 @@ class RunTribbleGenerationMode(luigi.Task):
                     "--ignore-grammar-cache",
                     "--no-check-duplicate-alts",  # transformations are allowed to produce duplicate alternatives
                     "generate",
-                    f'--suffix={subject["suffix"]}',
+                    f'--suffix={format_info["suffix"]}',
                     f"--out-dir={out}",
                     f"--grammar-file={transformed_grammar_file}",
-                    f"--mode={self.input_generation_mode}"
+                    f"--mode={self.input_generation_mode}",
                     ]
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
@@ -302,7 +310,8 @@ class RunTribbleGenerationMode(luigi.Task):
 @requires(BuildSubject, DownloadOriginalBytecode, RunTribbleGenerationMode)
 class RunSubject(luigi.Task):
     """Runs the given subject with the given inputs and produces a cumulative coverage report at the given location."""
-    remove_randomly_generated_files: bool = luigi.BoolParameter(description="Remove the randomly generated files after we have acquired the execution metrics to save space.")
+    remove_randomly_generated_files: bool = luigi.BoolParameter(
+        description="Remove the randomly generated files after we have acquired the execution metrics to save space.")
 
     def output(self):
         return luigi.LocalTarget(work_dir / "results" / "raw" / self.grammar_transformation_mode
@@ -327,44 +336,32 @@ class RunSubject(luigi.Task):
             remove_tree(input_path)
 
 
-@inherits(RunSubject)
-class ComputeCoverageStatistics(luigi.Task):
-    """Computes conventional statistics on the coverage files."""
-    only_format: str = luigi.Parameter(description="Only run experiments for formats starting with this prefix.")
-    report_name: str = luigi.Parameter(description="The name of the report file.", positional=False, default="report")
-    random_seed: int = luigi.IntParameter(description="The main seed for this experiment. All other random seeds will be derived from it.", positional=False)
-
-    @property
-    def _selected_subjects(self) -> Dict[str, List[str]]:
-        subject_info = {
-                        fmt: list(info["drivers"].keys())
-                        for fmt, info
-                        in subjects.items()
-                        if fmt.startswith(self.only_format)
-                        }
-        if not subject_info:
-            raise ValueError(f"There are no formats starting with {self.only_format}!")
-        return subject_info
+class EvaluateGrammar(luigi.WrapperTask, StableRandomness):
+    """Summarizes the run results of one grammars' eligible subjects."""
+    format: str = luigi.Parameter(description="The format corresponding to the grammar to test.")
+    grammar_transformation_mode: str = luigi.Parameter(description="Which mode to use when transforming grammars.")
+    input_generation_mode: str = luigi.Parameter(description="Which mode to use when generating inputs.")
+    random_seed: int = luigi.IntParameter(
+        description="The main seed for this experiment. All other random seeds will be derived from it.",
+        positional=False)
+    remove_randomly_generated_files: bool = luigi.BoolParameter(
+        description="Remove the randomly generated files after we have acquired the execution metrics to save space.")
 
     def requires(self):
-        d = {
-            fmt:    {
-                    driver: self.clone(
-                                      RunSubject,
-                                      format=fmt,
-                                      subject_name=driver,
-                                      tribble_generation_seed=self.random_int(
-                                          self.random_seed, "tribble_generation_seed", fmt, driver),
-                                      tribble_transformation_seed=self.random_int(
-                                          self.random_seed, "tribble_transformation_seed", fmt, driver)
-                                      )
-                    for driver
-                    in drivers
-                    }
-            for fmt, drivers
-            in self._selected_subjects.items()
-            }
-        return d
+        fmt_subjects = {
+            driver: self.clone(RunSubject, subject_name=driver,
+                               tribble_generation_seed=self.random_int(self.random_seed, "tribble_generation_seed",
+                                                                       self.format, driver),
+                               tribble_transformation_seed=self.random_int(self.random_seed,
+                                                                           "tribble_transformation_seed", self.format,
+                                                                           driver),
+                               )
+            for driver
+            in subjects[self.format]["drivers"].keys()
+        }
+        return fmt_subjects
+
+    # TODO implement single grammar coverage statistics
 
     # TODO: calculate median branch coverage here by inspecting the last line of each subject coverage file using pandas
     # def run(self): ...
@@ -373,14 +370,43 @@ class ComputeCoverageStatistics(luigi.Task):
     # def output(self): ...
 
 
+class EvaluateTransformation(luigi.WrapperTask, StableRandomness):
+    """Computes conventional statistics on the transformation results of each grammar."""
+    only_format: str = luigi.Parameter(description="Only run experiments for formats starting with this prefix.")
+    grammar_transformation_mode: str = luigi.Parameter(description="Which mode to use when transforming grammars.")
+    input_generation_mode: str = luigi.Parameter(description="Which mode to use when generating inputs.")
+    random_seed: int = luigi.IntParameter(
+        description="The main seed for this experiment. All other random seeds will be derived from it.",
+        positional=False)
+    remove_randomly_generated_files: bool = luigi.BoolParameter(
+        description="Remove the randomly generated files after we have acquired the execution metrics to save space.")
+
+    def requires(self):
+        selected_fmts = {
+            fmt: self.clone(EvaluateGrammar, format=fmt)
+            for fmt
+            in subjects.keys()
+            if fmt.startswith(self.only_format)
+        }
+        if not selected_fmts:
+            raise ValueError(f"There are no formats starting with {self.only_format}!")
+        return selected_fmts
+
+    # TODO implement intergrammar coverage statistics
+
+
 # Will later coordinate several runs and call the evaluation report producer
-@requires(ComputeCoverageStatistics)
+@requires(EvaluateTransformation)
 class Experiment(luigi.WrapperTask):
-    """Transform all input grammars of the requested formats in the specified way. Then evaluate the coverage achieved by inputs generated from them."""
+    """Compares transformation results to judge their effectiveness."""
+    report_name: str = luigi.Parameter(description="The name of the report file.", positional=False, default="report")
+
+    # TODO: yield out post-processing tasks here. At minimum render notebook as {report_name}.ipynb
 
 
 if __name__ == '__main__':
-    luigi.BoolParameter.parsing = luigi.BoolParameter.EXPLICIT_PARSING
-    logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", datefmt="%d.%m.%Y %H:%M:%S", level=logging.INFO, stream=sys.stdout)
+    luigi.BoolParameter.parsing = luigi.BoolParameter.EXPLICIT_PARSING  # TODO: why is this ignored?
+    logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", datefmt="%d.%m.%Y %H:%M:%S", level=logging.INFO,
+                        stream=sys.stdout)
     # TODO: add run monitoring later
     luigi.run(main_task_cls=Experiment)
