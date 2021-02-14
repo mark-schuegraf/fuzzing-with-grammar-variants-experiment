@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Final, List
 
 import luigi
+import pandas as pd
 from luigi.util import requires
 
 
@@ -336,7 +337,7 @@ class RunSubject(luigi.Task):
             remove_tree(input_path)
 
 
-class EvaluateGrammar(luigi.WrapperTask, StableRandomness):
+class EvaluateGrammar(luigi.Task, StableRandomness):
     """Summarizes the run results of one grammars' eligible subjects."""
     format: str = luigi.Parameter(description="The format corresponding to the grammar to test.")
     grammar_transformation_mode: str = luigi.Parameter(description="Which mode to use when transforming grammars.")
@@ -361,13 +362,24 @@ class EvaluateGrammar(luigi.WrapperTask, StableRandomness):
         }
         return fmt_subjects
 
-    # TODO implement single grammar coverage statistics
+    def run(self):
+        """Calculates the median cumulative branch coverage at each time point and outputs the medians as a column."""
+        joined_branch_coverage_columns = pd.concat(
+            [pd.read_csv(cov_file.path)["branch"] for cov_file in self.input().values()],
+            axis=1, sort=False)
+        cumulative_median_coverages = joined_branch_coverage_columns.median(axis=1)
+        os.makedirs(os.path.dirname(self.output().path), exist_ok=True)
+        with open(self.output().path, "w", newline="") as out:
+            cumulative_median_coverages.to_csv(out, index=False)
 
-    # TODO: calculate median branch coverage here by inspecting the last line of each subject coverage file using pandas
-    # def run(self): ...
+    """" Later on, calculate further statistics on the subject runs for a single grammar here:
+    1. Compute average characteristics of generated inputs
+    2. Calculate other summary statistics like the mean over possibly other types of coverage
+    """
 
-    # TODO: output median coverage report file here with name self.report_name
-    # def output(self): ...
+    def output(self):
+        return luigi.LocalTarget(work_dir / "results" / "processed" / self.grammar_transformation_mode / self.format
+                                 / f"{self.format}.median-branch-coverage.csv")
 
 
 class EvaluateTransformation(luigi.WrapperTask, StableRandomness):
@@ -392,16 +404,23 @@ class EvaluateTransformation(luigi.WrapperTask, StableRandomness):
             raise ValueError(f"There are no formats starting with {self.only_format}!")
         return selected_fmts
 
-    # TODO implement intergrammar coverage statistics
+    """" Later on, calculate intergrammar statistics on the subject runs for a single transformation here:
+    1. Compare the average characteristics of the per-grammar input sets to evaluate consistency of the transformation
+    2. Aggregate per-grammar statistics from EvaluateGrammar to obtain more data for significance testing
+    """
 
 
-# Will later coordinate several runs and call the evaluation report producer
 @requires(EvaluateTransformation)
 class Experiment(luigi.WrapperTask):
     """Compares transformation results to judge their effectiveness."""
     report_name: str = luigi.Parameter(description="The name of the report file.", positional=False, default="report")
 
-    # TODO: yield out post-processing tasks here. At minimum render notebook as {report_name}.ipynb
+    """" Later on, yield out various post-processing tasks here:
+    1. Invoke EvaluateTransformation on all candidate transformations as well as the test set
+    2. Calculate the statistical significance of each candidate transformation
+    3. Invoke the evaluation report producer / jupyter notebook renderer
+    4. Write out report as {report_name}.ipynb
+    """
 
 
 if __name__ == '__main__':
