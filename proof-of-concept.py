@@ -259,14 +259,14 @@ class RunTribbleTransformationMode(luigi.Task, StableRandomness):
         with self.output().temporary_path() as out:
             args = ["java",
                     "-jar", tribble_jar,
-                    # f"--random-seed={random_seed}", TODO turn me on later
+                    f"--random-seed={random_seed}",
                     f"--automaton-dir={automaton_dir}",
                     "--ignore-grammar-cache",
                     "--no-check-duplicate-alts",  # transformations are allowed to produce duplicate alternatives
                     "transform-grammar",
+                    f"--grammar-file={grammar_file}",
+                    f"--output-grammar-file={out}",
                     f"--mode={self.grammar_transformation_mode}",
-                    str(grammar_file),
-                    out,
                     ]
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
