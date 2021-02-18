@@ -312,7 +312,8 @@ class RunTribbleGenerationMode(luigi.Task, StableRandomness):
 class RunSubject(luigi.Task):
     """Runs the given subject with the given inputs and produces a cumulative coverage report at the given location."""
     remove_randomly_generated_files: bool = luigi.BoolParameter(
-        description="Remove the randomly generated files after we have acquired the execution metrics to save space.")
+        description="Remove the randomly generated files after we have acquired the execution metrics to save space.",
+        parsing=luigi.BoolParameter.EXPLICIT_PARSING, default=False)
 
     def output(self):
         return luigi.LocalTarget(work_dir / "results" / "raw" / self.grammar_transformation_mode
@@ -346,7 +347,8 @@ class EvaluateGrammar(luigi.Task, StableRandomness):
         description="The main seed for this experiment. All other random seeds will be derived from it.",
         positional=False)
     remove_randomly_generated_files: bool = luigi.BoolParameter(
-        description="Remove the randomly generated files after we have acquired the execution metrics to save space.")
+        description="Remove the randomly generated files after we have acquired the execution metrics to save space.",
+        parsing=luigi.BoolParameter.EXPLICIT_PARSING, default=False)
 
     def requires(self):
         fmt_subjects = {
@@ -391,7 +393,8 @@ class EvaluateTransformation(luigi.WrapperTask, StableRandomness):
         description="The main seed for this experiment. All other random seeds will be derived from it.",
         positional=False)
     remove_randomly_generated_files: bool = luigi.BoolParameter(
-        description="Remove the randomly generated files after we have acquired the execution metrics to save space.")
+        description="Remove the randomly generated files after we have acquired the execution metrics to save space.",
+        parsing=luigi.BoolParameter.EXPLICIT_PARSING, default=False)
 
     def requires(self):
         selected_fmts = {
@@ -424,7 +427,6 @@ class Experiment(luigi.WrapperTask):
 
 
 if __name__ == '__main__':
-    luigi.BoolParameter.parsing = luigi.BoolParameter.EXPLICIT_PARSING  # TODO: why is this ignored?
     logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", datefmt="%d.%m.%Y %H:%M:%S", level=logging.INFO,
                         stream=sys.stdout)
     # TODO: add run monitoring later
