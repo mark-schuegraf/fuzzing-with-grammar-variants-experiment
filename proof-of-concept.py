@@ -360,25 +360,29 @@ class EvaluateGrammar(luigi.Task, StableRandomness):
         return fmt_subjects
 
     def run(self):
-        """Calculates the median cumulative branch coverage at each time point and outputs the medians as a column."""
-        joined_branch_coverage_columns = pd.concat(
-            [pd.read_csv(cov_file.path)["branch"] for cov_file in self.input().values()],
+        """
+        Calculates the median cumulative branch coverage for each additional tested input.
+        Assumes that each subject runner fed inputs to their subject in the same order.
+        """
+        joint_cumulative_branch_coverage = pd.concat(
+            [pd.read_csv(cov_file.path, index_col="filename")["branch"] for cov_file in self.input().values()],
             axis=1, sort=False)
-        cumulative_median_coverages = joined_branch_coverage_columns.median(axis=1)
+        median_cumulative_branch_coverage = pd.DataFrame(joint_cumulative_branch_coverage.median(axis=1),
+                                                         columns=["median-cumulative-branch"])
         os.makedirs(os.path.dirname(self.output().path), exist_ok=True)
         with open(self.output().path, "w", newline="") as out:
-            cumulative_median_coverages.to_csv(out, index=False)
+            median_cumulative_branch_coverage.to_csv(out, index=True)
         if self.remove_randomly_generated_files:
             remove_tree(work_dir / "inputs" / self.grammar_transformation_mode / self.format)
 
-    """" Later on, calculate further statistics on the subject runs for a single grammar here:
+    """ Later on, calculate further statistics on the subject runs for a single grammar here:
     1. Compute average characteristics of generated inputs
     2. Calculate other summary statistics like the mean over possibly other types of coverage
     """
 
     def output(self):
         return luigi.LocalTarget(work_dir / "results" / "processed" / self.grammar_transformation_mode / self.format
-                                 / f"{self.format}.median-branch-coverage.csv")
+                                 / f"{self.format}.coverage-statistics.csv")
 
 
 class EvaluateTransformation(luigi.WrapperTask, StableRandomness):
