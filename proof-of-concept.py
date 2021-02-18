@@ -311,9 +311,6 @@ class RunTribbleGenerationMode(luigi.Task, StableRandomness):
 @requires(BuildSubject, DownloadOriginalBytecode, RunTribbleGenerationMode)
 class RunSubject(luigi.Task):
     """Runs the given subject with the given inputs and produces a cumulative coverage report at the given location."""
-    remove_randomly_generated_files: bool = luigi.BoolParameter(
-        description="Remove the randomly generated files after we have acquired the execution metrics to save space.",
-        parsing=luigi.BoolParameter.EXPLICIT_PARSING, default=False)
 
     def output(self):
         return luigi.LocalTarget(work_dir / "results" / "raw" / self.grammar_transformation_mode
@@ -334,8 +331,6 @@ class RunSubject(luigi.Task):
                 ]
         logging.info("Launching %s", " ".join(args))
         subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
-        if self.remove_randomly_generated_files:
-            remove_tree(input_path)
 
 
 class EvaluateGrammar(luigi.Task, StableRandomness):
@@ -373,6 +368,8 @@ class EvaluateGrammar(luigi.Task, StableRandomness):
         os.makedirs(os.path.dirname(self.output().path), exist_ok=True)
         with open(self.output().path, "w", newline="") as out:
             cumulative_median_coverages.to_csv(out, index=False)
+        if self.remove_randomly_generated_files:
+            remove_tree(work_dir / "inputs" / self.grammar_transformation_mode / self.format)
 
     """" Later on, calculate further statistics on the subject runs for a single grammar here:
     1. Compute average characteristics of generated inputs
@@ -410,6 +407,7 @@ class EvaluateTransformation(luigi.WrapperTask, StableRandomness):
     """" Later on, calculate intergrammar statistics on the subject runs for a single transformation here:
     1. Compare the average characteristics of the per-grammar input sets to evaluate consistency of the transformation
     2. Aggregate per-grammar statistics from EvaluateGrammar to obtain more data for significance testing
+    3. Move input cleanup here from EvaluateGrammar
     """
 
 
