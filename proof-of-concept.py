@@ -396,7 +396,12 @@ class EvaluateGrammar(luigi.Task, StableRandomness):
 
 
 class EvaluateTransformation(luigi.WrapperTask, StableRandomness):
-    """Computes conventional statistics on the transformation results of each grammar."""
+    """
+    Computes conventional statistics on the transformation results of each grammar.
+    Later on, a paired difference test will be used to measure the impact of the transformation.
+    The specific test to be used will likely be a Wilcoxon signed-rank test, as cumulative coverages are logarithmically
+    distributed, so a normal distribution cannot be assumed for use of the paired Student's t-test.
+    """
     only_format: str = luigi.Parameter(description="Only run experiments for formats starting with this prefix.")
     grammar_transformation_mode: str = luigi.Parameter(description="Which mode to use when transforming grammars.")
     input_generation_mode: str = luigi.Parameter(description="Which mode to use when generating inputs.")
@@ -407,9 +412,35 @@ class EvaluateTransformation(luigi.WrapperTask, StableRandomness):
         description="Remove the randomly generated files after we have acquired the execution metrics to save space.",
         parsing=luigi.BoolParameter.EXPLICIT_PARSING, default=False)
 
+    def _eval_original_grammar(self, fmt: str) -> luigi.Task:
+        """Evaluates executions using the original grammar on the level of a single grammar."""
+        return self.clone(EvaluateGrammar, format=fmt, grammar_transformation_mode="identity")
+
+    def _eval_transformed_grammar(self, fmt: str) -> luigi.Task:
+        """Evaluates executions using the transformed grammar on the level of a single grammar."""
+        return self.clone(EvaluateGrammar, format=fmt)
+
+    def _produce_paired_diffs(self, fmt: str, orig_path: Path, transf_path: Path) -> pd.DataFrame:
+        """Match up before/after coverages and output DataFrame containing relative and absolute coverages."""
+        # read input files
+        orig_result = pd.read_csv(orig_path, index_col="filenum")
+        transf_result = pd.read_csv(transf_path, index_col="filenum")
+        # discard filename column
+        orig_result.drop(columns=["filename"], inplace=True)
+        transf_result.drop(columns=["filename"], inplace=True)
+        # join before/after results
+        joint_result = pd.concat((orig_result, transf_result), axis=1, sort=False)
+        # rename columns to reflect underlying transformations and tested format
+        orig_name = f"{fmt}_id_cumulative-median-branch"
+        transf_name = f"{fmt}_{self.grammar_transformation_mode}_cumulative-median-branch"
+        joint_result.columns = [orig_name, transf_name]
+        # add their differences as a final column
+        joint_result[f"{fmt}_delta_cumulative-median-branch"] = joint_result[transf_name] - joint_result[orig_name]
+        return joint_result
+
     def requires(self):
         selected_fmts = {
-            fmt: self.clone(EvaluateGrammar, format=fmt)
+            fmt: [self._eval_original_grammar(fmt), self._eval_transformed_grammar(fmt)]
             for fmt
             in subjects.keys()
             if fmt.startswith(self.only_format)
@@ -418,11 +449,34 @@ class EvaluateTransformation(luigi.WrapperTask, StableRandomness):
             raise ValueError(f"There are no formats starting with {self.only_format}!")
         return selected_fmts
 
+    def run(self):
+        """
+        Calculates the paired differences in median cumulative branch coverage for each selected format.
+        Later on, could consider calculating the mean paired differences.
+        """
+        # get paths and join within format groups
+        grammar_level_joins = [self._produce_paired_diffs(fmt, in_paths[0].path, in_paths[1].path)
+                               for fmt, in_paths in self.input().items()]
+        # expand grammar-level results side by side
+        transf_level_join = pd.concat(grammar_level_joins, axis=1, sort=False)
+        # write out DataFrame
+        os.makedirs(os.path.dirname(self.output().path), exist_ok=True)
+        with open(self.output().path, "w", newline="") as out:
+            transf_level_join.to_csv(out, index=True)
+        # clean up if desired
+        if self.remove_randomly_generated_files:
+            remove_tree(work_dir / "inputs" / self.grammar_transformation_mode)
+        # TODO remove cleanup from grammar level, now that it's here?
+
     """" Later on, calculate intergrammar statistics on the subject runs for a single transformation here:
     1. Compare the average characteristics of the per-grammar input sets to evaluate consistency of the transformation
     2. Aggregate per-grammar statistics from EvaluateGrammar to obtain more data for significance testing
     3. Move input cleanup here from EvaluateGrammar
     """
+
+    def output(self):
+        return luigi.LocalTarget(work_dir / "results" / "processed" / self.grammar_transformation_mode
+                                 / f"{self.grammar_transformation_mode}.coverage-statistics.csv")
 
 
 @requires(EvaluateTransformation)
