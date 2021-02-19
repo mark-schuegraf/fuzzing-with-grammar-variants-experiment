@@ -341,9 +341,6 @@ class EvaluateGrammar(luigi.Task, StableRandomness):
     random_seed: int = luigi.IntParameter(
         description="The main seed for this experiment. All other random seeds will be derived from it.",
         positional=False)
-    remove_randomly_generated_files: bool = luigi.BoolParameter(
-        description="Remove the randomly generated files after we have acquired the execution metrics to save space.",
-        parsing=luigi.BoolParameter.EXPLICIT_PARSING, default=False)
 
     def requires(self):
         fmt_subjects = {
@@ -363,6 +360,9 @@ class EvaluateGrammar(luigi.Task, StableRandomness):
         """
         Calculates the median cumulative branch coverage for each additional tested input.
         Assumes that each subject runner fed inputs to their subject in the same order.
+        Later on, calculate further statistics on the subject runs for a single grammar here:
+        1. Compute average characteristics of generated inputs
+        2. Calculate other summary statistics like the mean over possibly other types of coverage
         """
         # join coverage CSVs horizontally using input filename and retain only branch coverage
         joint_cumulative_branch_coverages = pd.concat(
@@ -381,14 +381,6 @@ class EvaluateGrammar(luigi.Task, StableRandomness):
         os.makedirs(os.path.dirname(self.output().path), exist_ok=True)
         with open(self.output().path, "w", newline="") as out:
             filenum_annotated_medians.to_csv(out, index=True)
-        # clean up if desired
-        if self.remove_randomly_generated_files:
-            remove_tree(work_dir / "inputs" / self.grammar_transformation_mode / self.format)
-
-    """ Later on, calculate further statistics on the subject runs for a single grammar here:
-    1. Compute average characteristics of generated inputs
-    2. Calculate other summary statistics like the mean over possibly other types of coverage
-    """
 
     def output(self):
         return luigi.LocalTarget(work_dir / "results" / "processed" / self.grammar_transformation_mode / self.format
@@ -396,12 +388,7 @@ class EvaluateGrammar(luigi.Task, StableRandomness):
 
 
 class EvaluateTransformation(luigi.WrapperTask, StableRandomness):
-    """
-    Computes conventional statistics on the transformation results of each grammar.
-    Later on, a paired difference test will be used to measure the impact of the transformation.
-    The specific test to be used will likely be a Wilcoxon signed-rank test, as cumulative coverages are logarithmically
-    distributed, so a normal distribution cannot be assumed for use of the paired Student's t-test.
-    """
+    """Computes conventional statistics on the transformation results of each grammar."""
     only_format: str = luigi.Parameter(description="Only run experiments for formats starting with this prefix.")
     grammar_transformation_mode: str = luigi.Parameter(description="Which mode to use when transforming grammars.")
     input_generation_mode: str = luigi.Parameter(description="Which mode to use when generating inputs.")
@@ -420,24 +407,6 @@ class EvaluateTransformation(luigi.WrapperTask, StableRandomness):
         """Evaluates executions using the transformed grammar on the level of a single grammar."""
         return self.clone(EvaluateGrammar, format=fmt)
 
-    def _produce_paired_diffs(self, fmt: str, orig_path: Path, transf_path: Path) -> pd.DataFrame:
-        """Match up before/after coverages and output DataFrame containing relative and absolute coverages."""
-        # read input files
-        orig_result = pd.read_csv(orig_path, index_col="filenum")
-        transf_result = pd.read_csv(transf_path, index_col="filenum")
-        # discard filename column
-        orig_result.drop(columns=["filename"], inplace=True)
-        transf_result.drop(columns=["filename"], inplace=True)
-        # join before/after results
-        joint_result = pd.concat((orig_result, transf_result), axis=1, sort=False)
-        # rename columns to reflect underlying transformations and tested format
-        orig_name = f"{fmt}_id_cumulative-median-branch"
-        transf_name = f"{fmt}_{self.grammar_transformation_mode}_cumulative-median-branch"
-        joint_result.columns = [orig_name, transf_name]
-        # add their differences as a final column
-        joint_result[f"{fmt}_delta_cumulative-median-branch"] = joint_result[transf_name] - joint_result[orig_name]
-        return joint_result
-
     def requires(self):
         selected_fmts = {
             fmt: [self._eval_original_grammar(fmt), self._eval_transformed_grammar(fmt)]
@@ -449,10 +418,40 @@ class EvaluateTransformation(luigi.WrapperTask, StableRandomness):
             raise ValueError(f"There are no formats starting with {self.only_format}!")
         return selected_fmts
 
+    @staticmethod
+    def _reformat_grammar_level_statistics(fmt: str, stat_file_path: Path):
+        """Brings the output of EvaluateGrammar into a form suitable for paired difference processing."""
+        # read input file
+        res = pd.read_csv(stat_file_path, index_col=False)
+        # discard filename column
+        res.drop(columns=["filename"], inplace=True)
+        # add format as grammar name column
+        res["grammar"] = fmt
+        # add grammar name to the index
+        res.set_index(["grammar", "filenum"], inplace=True)
+        return res
+
+    def _produce_paired_diffs(self, fmt: str, orig_path: Path, transf_path: Path) -> pd.DataFrame:
+        """Match up before/after coverages and output DataFrame containing relative and absolute coverages."""
+        # preprocess input files
+        orig_result = self._reformat_grammar_level_statistics(fmt, orig_path)
+        transf_result = self._reformat_grammar_level_statistics(fmt, transf_path)
+        # join before/after results
+        joint_result = pd.concat((orig_result, transf_result), axis=1, sort=False)
+        # rename columns to reflect underlying transformations and tested format
+        orig_name = f"id_cumulative-median-branch"
+        transf_name = f"{self.grammar_transformation_mode}_cumulative-median-branch"
+        joint_result.columns = [orig_name, transf_name]
+        # add their differences as a final column
+        joint_result[f"delta_cumulative-median-branch"] = joint_result[transf_name] - joint_result[orig_name]
+        return joint_result
+
     def run(self):
         """
         Calculates the paired differences in median cumulative branch coverage for each selected format.
-        Later on, could consider calculating the mean paired differences.
+        Later on, calculate more intergrammar statistics on the subject runs for a single transformation here:
+        1. Compare the average characteristics of the per-grammar input sets to evaluate consistency
+        2. Do cross-subject result aggregation in order to statistical testing on top level
         """
         # get paths and join within format groups
         grammar_level_joins = [self._produce_paired_diffs(fmt, in_paths[0].path, in_paths[1].path)
@@ -466,13 +465,7 @@ class EvaluateTransformation(luigi.WrapperTask, StableRandomness):
         # clean up if desired
         if self.remove_randomly_generated_files:
             remove_tree(work_dir / "inputs" / self.grammar_transformation_mode)
-        # TODO remove cleanup from grammar level, now that it's here?
-
-    """" Later on, calculate intergrammar statistics on the subject runs for a single transformation here:
-    1. Compare the average characteristics of the per-grammar input sets to evaluate consistency of the transformation
-    2. Aggregate per-grammar statistics from EvaluateGrammar to obtain more data for significance testing
-    3. Move input cleanup here from EvaluateGrammar
-    """
+            # later on, also remove /inputs/identity after all other transformations have been evaluated
 
     def output(self):
         return luigi.LocalTarget(work_dir / "results" / "processed" / self.grammar_transformation_mode
@@ -481,15 +474,17 @@ class EvaluateTransformation(luigi.WrapperTask, StableRandomness):
 
 @requires(EvaluateTransformation)
 class Experiment(luigi.WrapperTask):
-    """Compares transformation results to judge their effectiveness."""
-    report_name: str = luigi.Parameter(description="The name of the report file.", positional=False, default="report")
-
-    """" Later on, yield out various post-processing tasks here:
+    """Compares transformation results to judge their effectiveness.
+    Later on, a paired difference test will be used to measure the impact of the transformation.
+    The specific test to be used will likely be a Wilcoxon signed-rank test, as cumulative coverages are logarithmically
+    distributed, so a normal distribution cannot be assumed for use of the paired Student's t-test.
+    Do this by yielding out various post-processing tasks in requires():
     1. Invoke EvaluateTransformation on all candidate transformations as well as the test set
-    2. Calculate the statistical significance of each candidate transformation
-    3. Invoke the evaluation report producer / jupyter notebook renderer
-    4. Write out report as {report_name}.ipynb
+    2. Do 1. several times to calculate the statistical significance of each candidate transformation's coverage gain
+    3. Potentially invoke other tasks that produce components of the report {report_name}.ipynb
     """
+    # probably remove this later, because the report file will be a static jupyter notebook with a fixed name
+    report_name: str = luigi.Parameter(description="The name of the report file.", positional=False, default="report")
 
 
 if __name__ == '__main__':
