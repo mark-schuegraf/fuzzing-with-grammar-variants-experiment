@@ -364,14 +364,24 @@ class EvaluateGrammar(luigi.Task, StableRandomness):
         Calculates the median cumulative branch coverage for each additional tested input.
         Assumes that each subject runner fed inputs to their subject in the same order.
         """
-        joint_cumulative_branch_coverage = pd.concat(
+        # join coverage CSVs horizontally using input filename and retain only branch coverage
+        joint_cumulative_branch_coverages = pd.concat(
             [pd.read_csv(cov_file.path, index_col="filename")["branch"] for cov_file in self.input().values()],
             axis=1, sort=False)
-        median_cumulative_branch_coverage = pd.DataFrame(joint_cumulative_branch_coverage.median(axis=1),
+        # compute per-file medians of the branch coverage
+        median_cumulative_branch_coverage = pd.DataFrame(joint_cumulative_branch_coverages.median(axis=1),
                                                          columns=["median-cumulative-branch"])
+        # enumerate the files for pairwise difference evaluation
+        filenum_annotated_medians = median_cumulative_branch_coverage.reset_index()
+        # do so starting at 1
+        filenum_annotated_medians.index += 1
+        # rename index to "filenum"
+        filenum_annotated_medians.index.rename("filenum", inplace=True)
+        # write out DataFrame
         os.makedirs(os.path.dirname(self.output().path), exist_ok=True)
         with open(self.output().path, "w", newline="") as out:
-            median_cumulative_branch_coverage.to_csv(out, index=True)
+            filenum_annotated_medians.to_csv(out, index=True)
+        # clean up if desired
         if self.remove_randomly_generated_files:
             remove_tree(work_dir / "inputs" / self.grammar_transformation_mode / self.format)
 
