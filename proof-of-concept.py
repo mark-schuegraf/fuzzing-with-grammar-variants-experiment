@@ -387,7 +387,7 @@ class EvaluateGrammar(luigi.Task, StableRandomness):
                                  / f"{self.format}.coverage-statistics.csv")
 
 
-class EvaluateTransformation(luigi.WrapperTask, StableRandomness):
+class EvaluateTransformation(luigi.Task, StableRandomness):
     """Computes conventional statistics on the transformation results of each grammar."""
     only_format: str = luigi.Parameter(description="Only run experiments for formats starting with this prefix.")
     grammar_transformation_mode: str = luigi.Parameter(description="Which mode to use when transforming grammars.")
