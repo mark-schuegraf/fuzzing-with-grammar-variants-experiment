@@ -63,6 +63,20 @@ class TransformGrammar(luigi.Task, metaclass=ABCMeta):
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
 
+class ElementaryTransformGrammar(TransformGrammar, metaclass=ABCMeta):
+    def output(self):
+        """If the transformation is elementary, store the intermediate grammar in a subdirectory of the target path."""
+        return luigi.LocalTarget(
+            work_dir / "transformed-grammars" / self.format / self.compound_transformation / self.transformation_mode / self.format)
+
+
+class CompoundTransformGrammar(TransformGrammar, metaclass=ABCMeta):
+    def output(self):
+        """If the transformation is compound, store the output grammar directly in the transformation directory."""
+        return luigi.LocalTarget(
+            work_dir / "transformed-grammars" / self.format / self.compound_transformation / self.format)
+
+
 class ProduceOriginalGrammar(luigi.ExternalTask):
     """Fetches the original grammar modeling a certain format."""
     format: str = luigi.Parameter(description="The format specified by the input grammar.")
@@ -76,7 +90,7 @@ Chomsky.
 """
 
 
-class TransformChomskyPre1(TransformGrammar):
+class TransformChomskyPre1(ElementaryTransformGrammar):
     @property
     def transformation_mode(self):
         return "backus-naur-formalizer"
@@ -89,13 +103,8 @@ class TransformChomskyPre1(TransformGrammar):
     def compound_transformation(self):
         return "chomsky-normal-form"
 
-    def output(self):
-        """If the transformation is elementary, store the intermediate grammar in a subdirectory of the target path."""
-        return luigi.LocalTarget(
-            work_dir / "transformed-grammars" / self.format / self.compound_transformation / self.transformation_mode / self.format)
 
-
-class TransformChomsky(TransformGrammar):
+class TransformChomsky(CompoundTransformGrammar):
     @property
     def transformation_mode(self):
         return "chomsky-normal-formalizer"
@@ -107,8 +116,3 @@ class TransformChomsky(TransformGrammar):
     @property
     def compound_transformation(self):
         return "chomsky-normal-form"
-
-    def output(self):
-        """If the transformation is compound, store the output grammar directly in the transformation directory."""
-        return luigi.LocalTarget(
-            work_dir / "transformed-grammars" / self.format / self.compound_transformation / self.format)
