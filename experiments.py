@@ -11,12 +11,17 @@ import sys
 import luigi
 from luigi.util import requires
 
-from lib import transformations
+from lib import generation
 
 
-@requires(transformations.TransformChomsky)
+@requires(generation.GenerateUsingRecurrent2PathNCoverageStrategyAndChomskyGrammar)
 class Experiment(luigi.WrapperTask):
     """Vertical prototype of the full experiment."""
+    format: str = luigi.Parameter(description="The format specified by the input grammar.")
+    number_of_files_to_generate: int = luigi.IntParameter(
+        description="The number of files that the generation run should produce.")
+    tribble_generation_seed: int = luigi.IntParameter(description="The seed for this tribble generation run.",
+                                                      positional=False, significant=False)
 
 
 if __name__ == '__main__':
