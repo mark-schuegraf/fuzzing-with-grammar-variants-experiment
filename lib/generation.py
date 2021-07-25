@@ -34,15 +34,15 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, metaclass=AB
 
     @property
     @abstractmethod
-    def prerequisite_transformation_task(self):
+    def transformation_task(self):
         raise NotImplementedError("Must specify the transformation of the input grammar to perform beforehand!")
 
     @property
-    def prerequisite_transformation_name(self):
+    def transformation_name(self):
         return self.requires()[1].transformation_name
 
     def requires(self):
-        return tooling.BuildTribble(), self.clone(self.prerequisite_transformation_task)
+        return tooling.BuildTribble(), self.clone(self.transformation_task)
 
     def run(self):
         tribble_jar = self.input()[0].path
@@ -83,7 +83,7 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, metaclass=AB
             return "unmarshal"
 
     def output(self):
-        return luigi.LocalTarget(work_dir / "inputs" / self.format / self.prerequisite_transformation_name)
+        return luigi.LocalTarget(work_dir / "inputs" / self.format / self.transformation_name)
 
 
 class GenerateUsingRecurrentKPathNCoverageStrategy(GenerateInputsWithTribble, metaclass=ABCMeta):
@@ -104,11 +104,11 @@ class GenerateUsingRecurrent2PathNCoverageStrategy(GenerateUsingRecurrentKPathNC
 
     @property
     @abstractmethod
-    def prerequisite_transformation_task(self):
+    def transformation_task(self):
         return transformations.TransformGrammarChomsky
 
 
-class GenerateUsingRecurrent2PathNCoverageStrategyAndChomskyGrammar(GenerateUsingRecurrent2PathNCoverageStrategy):
+class GenerateUsingRecurrent2PathNCoverageStrategyWithChomskyGrammar(GenerateUsingRecurrent2PathNCoverageStrategy):
     @property
-    def prerequisite_transformation_task(self):
+    def transformation_task(self):
         return transformations.TransformGrammarChomsky

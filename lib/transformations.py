@@ -27,7 +27,7 @@ class TransformGrammarWithTribble(luigi.Task, metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def prerequisite_transformation_task(self):
+    def transformation_task(self):
         raise NotImplementedError("Must specify the preconditions that must hold before transformation!")
 
     @property
@@ -36,7 +36,7 @@ class TransformGrammarWithTribble(luigi.Task, metaclass=ABCMeta):
         raise NotImplementedError("Must specify the name of the compound transformation that this is a substep of!")
 
     def requires(self):
-        return tooling.BuildTribble(), self.clone(self.prerequisite_transformation_task)
+        return tooling.BuildTribble(), self.clone(self.transformation_task)
 
     def run(self):
         tribble_jar = self.input()[0].path
@@ -102,7 +102,7 @@ class TransformGrammarChomskyStep1(ElementaryTransformGrammarWithTribble):
         return "backus-naur-formalizer"
 
     @property
-    def prerequisite_transformation_task(self):
+    def transformation_task(self):
         return ProduceOriginalGrammar
 
     @property
@@ -116,7 +116,7 @@ class TransformGrammarChomsky(CompoundTransformGrammarWithTribble):
         return "chomsky-normal-formalizer"
 
     @property
-    def prerequisite_transformation_task(self):
+    def transformation_task(self):
         return TransformGrammarChomskyStep1
 
     @property
