@@ -32,8 +32,8 @@ class TransformGrammarWithTribble(luigi.Task, metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def enclosing_compound_transformation(self):
-        raise NotImplementedError("Must specify the overall conversion procedure that this is a substep of!")
+    def transformation_name(self):
+        raise NotImplementedError("Must specify the name of the compound transformation that this is a substep of!")
 
     def requires(self):
         return tooling.BuildTribble(), self.clone(self.prerequisite_transformation_task)
@@ -41,7 +41,6 @@ class TransformGrammarWithTribble(luigi.Task, metaclass=ABCMeta):
     def run(self):
         tribble_jar = self.input()[0].path
         automaton_dir = work_dir / "tools" / "tribble-automaton-cache" / self.format
-        loading_strategy = "parse" if self.input()[1].path.endswith(".scala") else "unmarshal"
         with self.output().temporary_path() as out:
             args = ["java",
                     "-Xss100m",
@@ -54,26 +53,35 @@ class TransformGrammarWithTribble(luigi.Task, metaclass=ABCMeta):
                     "transform-grammar",
                     f"--grammar-file={self.input()[1].path}",
                     f"--output-grammar-file={out}",
-                    f"--loading-strategy={loading_strategy}",
+                    f"--loading-strategy={self.choose_loading_strategy_based_on_file_extension}",
                     "--storing-strategy=marshal",
                     f"--mode={self.tribble_transformation_mode}",
                     ]
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
+    def choose_loading_strategy_based_on_file_extension(self):
+        grammar_file_path = self.input()[1].path
+        if grammar_file_path.endswith(".scala"):
+            return "compile"
+        elif grammar_file_path.endswith(".tribble"):
+            return "parse"
+        else:
+            return "unmarshal"
+
 
 class ElementaryTransformGrammarWithTribble(TransformGrammarWithTribble, metaclass=ABCMeta):
     def output(self):
         """If the transformation is elementary, store the intermediate grammar in a subdirectory of the target path."""
         return luigi.LocalTarget(
-            work_dir / "transformed-grammars" / self.format / self.enclosing_compound_transformation / self.tribble_transformation_mode / self.format)
+            work_dir / "transformed-grammars" / self.format / self.transformation_name / self.tribble_transformation_mode / self.format)
 
 
 class CompoundTransformGrammarWithTribble(TransformGrammarWithTribble, metaclass=ABCMeta):
     def output(self):
         """If the transformation is compound, store the output grammar directly in the transformation directory."""
         return luigi.LocalTarget(
-            work_dir / "transformed-grammars" / self.format / self.enclosing_compound_transformation / self.format)
+            work_dir / "transformed-grammars" / self.format / self.transformation_name / self.format)
 
 
 class ProduceOriginalGrammar(luigi.ExternalTask):
@@ -98,7 +106,7 @@ class TransformGrammarChomskyStep1(ElementaryTransformGrammarWithTribble):
         return ProduceOriginalGrammar
 
     @property
-    def enclosing_compound_transformation(self):
+    def transformation_name(self):
         return "chomsky-normal-form"
 
 
@@ -112,5 +120,5 @@ class TransformGrammarChomsky(CompoundTransformGrammarWithTribble):
         return TransformGrammarChomskyStep1
 
     @property
-    def enclosing_compound_transformation(self):
+    def transformation_name(self):
         return "chomsky-normal-form"
