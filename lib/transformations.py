@@ -53,7 +53,7 @@ class TransformGrammarWithTribble(luigi.Task, metaclass=ABCMeta):
                     "transform-grammar",
                     f"--grammar-file={self.input()[1].path}",
                     f"--output-grammar-file={out}",
-                    f"--loading-strategy={self.choose_loading_strategy_based_on_file_extension}",
+                    f"--loading-strategy={self.choose_loading_strategy_based_on_file_extension()}",
                     "--storing-strategy=marshal",
                     f"--mode={self.tribble_transformation_mode}",
                     ]
@@ -62,9 +62,7 @@ class TransformGrammarWithTribble(luigi.Task, metaclass=ABCMeta):
 
     def choose_loading_strategy_based_on_file_extension(self):
         grammar_file_path = self.input()[1].path
-        if grammar_file_path.endswith(".scala"):
-            return "compile"
-        elif grammar_file_path.endswith(".tribble"):
+        if grammar_file_path.endswith(".scala") or grammar_file_path.endswith(".tribble"):
             return "parse"
         else:
             return "unmarshal"

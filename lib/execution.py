@@ -27,6 +27,10 @@ class RunSubjectAndProduceCoverageReport(luigi.Task, metaclass=ABCMeta):
         raise NotImplementedError("Must specify the input generation method to perform beforehand!")
 
     @property
+    def generation_strategy(self):
+        return self.requires()["inputs"].generation_strategy
+
+    @property
     def transformation_name(self):
         return self.requires()["inputs"].transformation_name
 
@@ -57,8 +61,9 @@ class RunSubjectAndProduceCoverageReport(luigi.Task, metaclass=ABCMeta):
         subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
     def output(self):
-        return luigi.LocalTarget(work_dir / "results" / "raw" / self.format / self.transformation_name
-                                 / f"{self.subject_name}.coverage.csv")
+        return luigi.LocalTarget(
+            work_dir / "results" / "raw" / self.format / self.generation_strategy / self.transformation_name
+            / f"{self.subject_name}.coverage.csv")
 
 
 class RunSubjectOnRecurrent2PathNCoverageInputsWithChomskyGrammar(RunSubjectAndProduceCoverageReport):

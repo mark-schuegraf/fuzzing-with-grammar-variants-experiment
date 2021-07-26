@@ -29,7 +29,7 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, metaclass=AB
 
     @property
     @abstractmethod
-    def tribble_generation_mode(self):
+    def generation_strategy(self):
         raise NotImplementedError("Must specify a generation mode to use for fuzzing!")
 
     @property
@@ -51,7 +51,7 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, metaclass=AB
         format_info = subjects[self.format]
         # also make the seed depend on the output path starting from work_dir
         rel_output_path = Path(self.output().path).relative_to(work_dir)
-        random_seed = self.random_int(self.tribble_generation_seed, self.format, self.tribble_generation_mode,
+        random_seed = self.random_int(self.tribble_generation_seed, self.format, self.generation_strategy,
                                       *rel_output_path.parts)
         with self.output().temporary_path() as out:
             args = ["java",
@@ -68,22 +68,20 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, metaclass=AB
                     f"--out-dir={out}",
                     f"--grammar-file={transformed_grammar_file}",
                     f"--loading-strategy={self.choose_loading_strategy_based_on_file_extension()}",
-                    f"--mode={self.tribble_generation_mode}",
+                    f"--mode={self.generation_strategy}",
                     ]
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
     def choose_loading_strategy_based_on_file_extension(self):
         grammar_file_path = self.input()[1].path
-        if grammar_file_path.endswith(".scala"):
-            return "compile"
-        elif grammar_file_path.endswith(".tribble"):
+        if grammar_file_path.endswith(".scala") or grammar_file_path.endswith(".tribble"):
             return "parse"
         else:
             return "unmarshal"
 
     def output(self):
-        return luigi.LocalTarget(work_dir / "inputs" / self.format / self.transformation_name)
+        return luigi.LocalTarget(work_dir / "inputs" / self.format / self.generation_strategy / self.transformation_name)
 
 
 class GenerateUsingRecurrentKPathNCoverageStrategy(GenerateInputsWithTribble, metaclass=ABCMeta):
@@ -93,7 +91,7 @@ class GenerateUsingRecurrentKPathNCoverageStrategy(GenerateInputsWithTribble, me
         raise NotImplementedError("Must specify k to use recurrent k-path coverage strategy!")
 
     @property
-    def tribble_generation_mode(self):
+    def generation_strategy(self):
         return f"recurrent-{self.k}-path-{self.number_of_files_to_generate}"
 
 
