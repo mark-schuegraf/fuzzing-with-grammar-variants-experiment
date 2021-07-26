@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This module contains luigi tasks corresponding to each tribble transformation mode.
+This module contains luigi tasks executing each subject in the subject collection with the generated input set.
 """
 
 import logging
