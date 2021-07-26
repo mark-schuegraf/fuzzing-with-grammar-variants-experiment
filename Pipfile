@@ -9,8 +9,8 @@ pandas = "*"
 # Potential data analytics and output processing for later:
 # numpy = "*"
 # scipy
-# plotly = "*"
-# notebook = "*"
+plotly = "*"
+notebook = "*"
 
 [requires]
 python_version = "3.8"
