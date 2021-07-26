@@ -100,11 +100,6 @@ class GenerateUsingRecurrent2PathNCoverageStrategy(GenerateUsingRecurrentKPathNC
     def k(self):
         return "2"
 
-    @property
-    @abstractmethod
-    def transformation_task(self):
-        return transformations.TransformGrammarChomsky
-
 
 class GenerateUsingRecurrent2PathNCoverageStrategyWithChomskyGrammar(GenerateUsingRecurrent2PathNCoverageStrategy):
     @property
