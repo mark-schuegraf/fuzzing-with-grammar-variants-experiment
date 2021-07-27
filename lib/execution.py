@@ -17,7 +17,7 @@ from lib import tooling
 from lib import work_dir
 
 
-@inherits(tooling.BuildSubject, tooling.DownloadOriginalBytecode, generation.GenerateInputsWithTribble)
+@inherits(tooling.BuildSubject, tooling.DownloadOriginalBytecode)
 class RunSubjectAndProduceCoverageReport(luigi.Task, metaclass=ABCMeta):
     resources = {"ram": 1}
 
@@ -38,7 +38,6 @@ class RunSubjectAndProduceCoverageReport(luigi.Task, metaclass=ABCMeta):
         return {
             "subject_jar": self.clone(tooling.BuildSubject),
             "original_jar": self.clone(tooling.DownloadOriginalBytecode),
-            "inputs": self.clone(self.generation_task)
         }
 
     def run(self):
@@ -66,7 +65,13 @@ class RunSubjectAndProduceCoverageReport(luigi.Task, metaclass=ABCMeta):
             / f"{self.subject_name}.coverage.csv")
 
 
+@inherits(generation.GenerateUsingRecurrent2PathNCoverageStrategyWithChomskyGrammar)
 class RunSubjectOnRecurrent2PathNCoverageInputsWithChomskyGrammar(RunSubjectAndProduceCoverageReport):
     @property
     def generation_task(self):
         return generation.GenerateUsingRecurrent2PathNCoverageStrategyWithChomskyGrammar
+
+    def requires(self):
+        dependencies = super(RunSubjectOnRecurrent2PathNCoverageInputsWithChomskyGrammar, self).requires()
+        dependencies["inputs"] = self.clone(self.generation_task)
+        return dependencies
