@@ -55,12 +55,11 @@ class RunSubjectAndProduceCoverageReport(luigi.Task, names.WithCompoundTransform
             / f"{self.subject_name}.coverage.csv")
 
 
-@inherits(generation.GenerateUsingRecurrent2PathNCoverageStrategyWithChomskyGrammar)
-class RunSubjectOnRecurrent2PathNCoverageInputsWithChomskyGrammar(RunSubjectAndProduceCoverageReport,
-                                                                  names.WithChomskyCompoundTransformationName,
-                                                                  modes.WithRecurrent2PathNCoverageGenerationMode):
+@inherits(generation.GenerateWithRecurrent2PathNCoverageStrategyWithChomskyGrammar)
+class RunSubjectWithRecurrent2PathNCoverageStrategyWithChomskyGrammar(RunSubjectAndProduceCoverageReport,
+                                                                      generation.WithRecurrent2PathNCoverageStrategyWithChomskyGrammar):
     def requires(self):
-        generation_task = generation.GenerateUsingRecurrent2PathNCoverageStrategyWithChomskyGrammar
-        dependencies = super(RunSubjectOnRecurrent2PathNCoverageInputsWithChomskyGrammar, self).requires()
+        generation_task = generation.GenerateWithRecurrent2PathNCoverageStrategyWithChomskyGrammar
+        dependencies = super(RunSubjectWithRecurrent2PathNCoverageStrategyWithChomskyGrammar, self).requires()
         dependencies["inputs"] = self.clone(generation_task)
         return dependencies

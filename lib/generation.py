@@ -77,9 +77,12 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
             work_dir / "inputs" / self.format / self.generation_mode / self.compound_transformation_name)
 
 
-class GenerateUsingRecurrent2PathNCoverageStrategyWithChomskyGrammar(GenerateInputsWithTribble,
-                                                                     names.WithChomskyCompoundTransformationName,
-                                                                     modes.WithRecurrent2PathNCoverageGenerationMode):
+class WithRecurrent2PathNCoverageStrategyWithChomskyGrammar(
+    names.WithChomskyCompoundTransformationName, modes.WithRecurrent2PathNCoverageGenerationMode): pass
+
+
+class GenerateWithRecurrent2PathNCoverageStrategyWithChomskyGrammar(GenerateInputsWithTribble,
+                                                                    WithRecurrent2PathNCoverageStrategyWithChomskyGrammar):
     @property
     def transformation_task(self):
         return transformations.TransformGrammarChomsky

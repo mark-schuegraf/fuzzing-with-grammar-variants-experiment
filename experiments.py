@@ -14,7 +14,7 @@ from luigi.util import requires
 from lib import execution
 
 
-@requires(execution.RunSubjectOnRecurrent2PathNCoverageInputsWithChomskyGrammar)
+@requires(execution.RunSubjectWithRecurrent2PathNCoverageStrategyWithChomskyGrammar)
 class Experiment(luigi.WrapperTask):
     """Vertical prototype of the full experiment."""
 

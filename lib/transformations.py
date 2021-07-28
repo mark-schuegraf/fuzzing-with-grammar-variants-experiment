@@ -87,15 +87,19 @@ Chomsky.
 """
 
 
-class TransformGrammarChomskyStep1(ElementaryTransformGrammarWithTribble, modes.WithBackusNaurTransformationMode,
-                                   names.WithChomskyCompoundTransformationName):
+class WithChomskyStep1(modes.WithBackusNaurTransformationMode, names.WithChomskyCompoundTransformationName): pass
+
+
+class TransformGrammarChomskyStep1(ElementaryTransformGrammarWithTribble, WithChomskyStep1):
     @property
     def transformation_task(self):
         return ProduceOriginalGrammar
 
 
-class TransformGrammarChomsky(CompoundTransformGrammarWithTribble, modes.WithChomskyTransformationMode,
-                              names.WithChomskyCompoundTransformationName):
+class WithChomsky(modes.WithChomskyTransformationMode, names.WithChomskyCompoundTransformationName): pass
+
+
+class TransformGrammarChomsky(CompoundTransformGrammarWithTribble, WithChomsky):
     @property
     def transformation_task(self):
         return TransformGrammarChomskyStep1
