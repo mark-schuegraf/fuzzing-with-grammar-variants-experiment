@@ -7,32 +7,22 @@ This module contains luigi tasks executing each subject in the subject collectio
 
 import logging
 import subprocess
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 
 import luigi
 from luigi.util import inherits
 
 from lib import generation
+from lib import modes
+from lib import names
 from lib import tooling
 from lib import work_dir
 
 
 @inherits(tooling.BuildSubject, tooling.DownloadOriginalBytecode)
-class RunSubjectAndProduceCoverageReport(luigi.Task, metaclass=ABCMeta):
+class RunSubjectAndProduceCoverageReport(luigi.Task, names.WithCompoundTransformationName, modes.WithGenerationMode,
+                                         metaclass=ABCMeta):
     resources = {"ram": 1}
-
-    @property
-    @abstractmethod
-    def generation_task(self):
-        raise NotImplementedError("Must specify the input generation method to perform beforehand!")
-
-    @property
-    def generation_strategy(self):
-        return self.requires()["inputs"].generation_strategy
-
-    @property
-    def transformation_name(self):
-        return self.requires()["inputs"].transformation_name
 
     def requires(self):
         return {
@@ -61,17 +51,16 @@ class RunSubjectAndProduceCoverageReport(luigi.Task, metaclass=ABCMeta):
 
     def output(self):
         return luigi.LocalTarget(
-            work_dir / "results" / "raw" / self.format / self.generation_strategy / self.transformation_name
+            work_dir / "results" / "raw" / self.format / self.generation_mode / self.compound_transformation_name
             / f"{self.subject_name}.coverage.csv")
 
 
 @inherits(generation.GenerateUsingRecurrent2PathNCoverageStrategyWithChomskyGrammar)
-class RunSubjectOnRecurrent2PathNCoverageInputsWithChomskyGrammar(RunSubjectAndProduceCoverageReport):
-    @property
-    def generation_task(self):
-        return generation.GenerateUsingRecurrent2PathNCoverageStrategyWithChomskyGrammar
-
+class RunSubjectOnRecurrent2PathNCoverageInputsWithChomskyGrammar(RunSubjectAndProduceCoverageReport,
+                                                                  names.WithChomskyCompoundTransformationName,
+                                                                  modes.WithRecurrent2PathNCoverageGenerationMode):
     def requires(self):
+        generation_task = generation.GenerateUsingRecurrent2PathNCoverageStrategyWithChomskyGrammar
         dependencies = super(RunSubjectOnRecurrent2PathNCoverageInputsWithChomskyGrammar, self).requires()
-        dependencies["inputs"] = self.clone(self.generation_task)
+        dependencies["inputs"] = self.clone(generation_task)
         return dependencies

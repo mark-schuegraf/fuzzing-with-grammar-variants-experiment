@@ -14,12 +14,15 @@ import luigi
 
 from lib import subjects
 from lib import tooling
+from lib import modes
+from lib import names
 from lib import transformations
 from lib import utils
 from lib import work_dir
 
 
-class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, metaclass=ABCMeta):
+class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCompoundTransformationName,
+                                modes.WithGenerationMode, metaclass=ABCMeta):
     format: str = luigi.Parameter(description="The format specified by the input grammar.")
     number_of_files_to_generate: int = luigi.IntParameter(
         description="The number of files that the generation run should produce.")
@@ -29,17 +32,8 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, metaclass=AB
 
     @property
     @abstractmethod
-    def generation_strategy(self):
-        raise NotImplementedError("Must specify a generation mode to use for fuzzing!")
-
-    @property
-    @abstractmethod
     def transformation_task(self):
         raise NotImplementedError("Must specify the transformation of the input grammar to perform beforehand!")
-
-    @property
-    def transformation_name(self):
-        return self.requires()[1].transformation_name
 
     def requires(self):
         return tooling.BuildTribble(), self.clone(self.transformation_task)
@@ -51,7 +45,7 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, metaclass=AB
         format_info = subjects[self.format]
         # also make the seed depend on the output path starting from work_dir
         rel_output_path = Path(self.output().path).relative_to(work_dir)
-        random_seed = self.random_int(self.tribble_generation_seed, self.format, self.generation_strategy,
+        random_seed = self.random_int(self.tribble_generation_seed, self.format, self.generation_mode,
                                       *rel_output_path.parts)
         with self.output().temporary_path() as out:
             args = ["java",
@@ -68,7 +62,7 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, metaclass=AB
                     f"--out-dir={out}",
                     f"--grammar-file={transformed_grammar_file}",
                     f"--loading-strategy={self.choose_loading_strategy_based_on_file_extension()}",
-                    f"--mode={self.generation_strategy}",
+                    f"--mode={self.generation_mode}",
                     ]
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
@@ -81,27 +75,13 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, metaclass=AB
             return "unmarshal"
 
     def output(self):
-        return luigi.LocalTarget(work_dir / "inputs" / self.format / self.generation_strategy / self.transformation_name)
+        return luigi.LocalTarget(
+            work_dir / "inputs" / self.format / self.generation_mode / self.compound_transformation_name)
 
 
-class GenerateUsingRecurrentKPathNCoverageStrategy(GenerateInputsWithTribble, metaclass=ABCMeta):
-    @property
-    @abstractmethod
-    def k(self):
-        raise NotImplementedError("Must specify k to use recurrent k-path coverage strategy!")
-
-    @property
-    def generation_strategy(self):
-        return f"recurrent-{self.k}-path-{self.number_of_files_to_generate}"
-
-
-class GenerateUsingRecurrent2PathNCoverageStrategy(GenerateUsingRecurrentKPathNCoverageStrategy, metaclass=ABCMeta):
-    @property
-    def k(self):
-        return "2"
-
-
-class GenerateUsingRecurrent2PathNCoverageStrategyWithChomskyGrammar(GenerateUsingRecurrent2PathNCoverageStrategy):
+class GenerateUsingRecurrent2PathNCoverageStrategyWithChomskyGrammar(GenerateInputsWithTribble,
+                                                                     names.WithChomskyCompoundTransformationName,
+                                                                     modes.WithRecurrent2PathNCoverageGenerationMode):
     @property
     def transformation_task(self):
         return transformations.TransformGrammarChomsky
