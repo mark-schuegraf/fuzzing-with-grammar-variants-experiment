@@ -7,6 +7,8 @@ This module contains mixins describing tribble transformation and generation mod
 
 from abc import ABCMeta, abstractmethod
 
+from lib import config
+
 """
 Transformation.
 """
@@ -50,13 +52,8 @@ class WithRecurrentKPathNCoverageGenerationMode(WithGenerationMode, metaclass=AB
         raise NotImplementedError("Must specify k to use recurrent k-path coverage strategy!")
 
     @property
-    @abstractmethod
-    def number_of_files_to_generate(self):
-        raise NotImplementedError("Must specify n to use recurrent k-path coverage strategy!")
-
-    @property
     def generation_mode(self):
-        return f"recurrent-{self.k}-path-{self.number_of_files_to_generate}"
+        return f"recurrent-{self.k}-path-{config.number_of_files_to_generate}"
 
 
 class WithRecurrent2PathNCoverageGenerationMode(WithRecurrentKPathNCoverageGenerationMode, metaclass=ABCMeta):

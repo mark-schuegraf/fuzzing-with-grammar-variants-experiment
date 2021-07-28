@@ -24,8 +24,6 @@ from lib import work_dir
 class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCompoundTransformationName,
                                 modes.WithGenerationMode, metaclass=ABCMeta):
     format: str = luigi.Parameter(description="The format specified by the input grammar.")
-    number_of_files_to_generate: int = luigi.IntParameter(
-        description="The number of files that the generation run should produce.")
     tribble_generation_seed: int = luigi.IntParameter(description="The seed for this tribble generation run.",
                                                       positional=False, significant=False)
     resources = {"ram": 4}
