@@ -18,7 +18,7 @@ from lib import names
 from lib import work_dir
 
 
-class TransformGrammarWithTribble(luigi.Task, modes.WithTransformationMode, names.WithCompoundTransformationName,
+class TransformGrammarWithTribble(luigi.Task, names.WithCompoundTransformationName, modes.WithTransformationMode,
                                   metaclass=ABCMeta):
     format: str = luigi.Parameter(description="The format specified by the input grammar.")
     resources = {"ram": 16}
@@ -87,7 +87,7 @@ Chomsky.
 """
 
 
-class WithChomskyStep1(modes.WithBackusNaurTransformationMode, names.WithChomskyCompoundTransformationName): pass
+class WithChomskyStep1(names.WithChomskyCompoundTransformationName, modes.WithBackusNaurTransformationMode): pass
 
 
 class TransformGrammarChomskyStep1(ElementaryTransformGrammarWithTribble, WithChomskyStep1):
@@ -96,7 +96,7 @@ class TransformGrammarChomskyStep1(ElementaryTransformGrammarWithTribble, WithCh
         return ProduceOriginalGrammar
 
 
-class WithChomsky(modes.WithChomskyTransformationMode, names.WithChomskyCompoundTransformationName): pass
+class WithChomsky(names.WithChomskyCompoundTransformationName, modes.WithChomskyTransformationMode): pass
 
 
 class TransformGrammarChomsky(CompoundTransformGrammarWithTribble, WithChomsky):
