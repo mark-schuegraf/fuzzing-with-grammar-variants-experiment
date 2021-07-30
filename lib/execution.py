@@ -22,6 +22,9 @@ from lib import work_dir
 @inherits(tooling.BuildSubject, tooling.DownloadOriginalBytecode)
 class RunSubjectAndProduceCoverageReport(luigi.Task, names.WithCompoundTransformationName, modes.WithGenerationMode,
                                          metaclass=ABCMeta):
+    format: str = luigi.Parameter(description="The format specified by the input grammar.")
+    run_number: int = luigi.IntParameter(
+        description="The run number corresponding to the input set used to execute the subject.")
     resources = {"ram": 1}
 
     def requires(self):
@@ -50,9 +53,18 @@ class RunSubjectAndProduceCoverageReport(luigi.Task, names.WithCompoundTransform
         subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
     def output(self):
-        return luigi.LocalTarget(
-            work_dir / "results" / "raw" / self.format / self.generation_mode / self.compound_transformation_name
-            / f"{self.subject_name}.coverage.csv")
+        return luigi.LocalTarget(work_dir / "results" / "raw" / self.format / self.subject_name / self.generation_mode /
+                                 self.compound_transformation_name / f"run-{self.run_number}" / "coverage.csv")
+
+
+@inherits(generation.GenerateWithRecurrent2PathNCoverageStrategyWithOriginalGrammar)
+class RunSubjectWithRecurrent2PathNCoverageStrategyWithOriginalGrammar(RunSubjectAndProduceCoverageReport,
+                                                                       generation.WithRecurrent2PathNCoverageStrategyWithOriginalGrammar):
+    def requires(self):
+        generation_task = generation.GenerateWithRecurrent2PathNCoverageStrategyWithOriginalGrammar
+        dependencies = super(RunSubjectWithRecurrent2PathNCoverageStrategyWithOriginalGrammar, self).requires()
+        dependencies["inputs"] = self.clone(generation_task)
+        return dependencies
 
 
 @inherits(generation.GenerateWithRecurrent2PathNCoverageStrategyWithChomskyGrammar)

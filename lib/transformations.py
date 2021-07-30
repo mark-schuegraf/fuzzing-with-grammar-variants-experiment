@@ -11,10 +11,10 @@ from abc import ABCMeta, abstractmethod
 
 import luigi
 
-from lib import subjects
-from lib import tooling
 from lib import modes
 from lib import names
+from lib import subjects
+from lib import tooling
 from lib import work_dir
 
 

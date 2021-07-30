@@ -24,6 +24,8 @@ from lib import work_dir
 class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCompoundTransformationName,
                                 modes.WithGenerationMode, metaclass=ABCMeta):
     format: str = luigi.Parameter(description="The format specified by the input grammar.")
+    run_number: int = luigi.IntParameter(
+        description="The run number corresponding to the input set produced during generation.")
     tribble_generation_seed: int = luigi.IntParameter(description="The seed for this tribble generation run.",
                                                       positional=False, significant=False)
     resources = {"ram": 4}
@@ -43,8 +45,8 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
         format_info = subjects[self.format]
         # also make the seed depend on the output path starting from work_dir
         rel_output_path = Path(self.output().path).relative_to(work_dir)
-        random_seed = self.random_int(self.tribble_generation_seed, self.format, self.generation_mode,
-                                      *rel_output_path.parts)
+        random_seed = self.random_int(self.tribble_generation_seed, self.generation_mode, self.format,
+                                      str(self.run_number), *rel_output_path.parts)
         with self.output().temporary_path() as out:
             args = ["java",
                     "-Xss100m",
@@ -74,7 +76,23 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
 
     def output(self):
         return luigi.LocalTarget(
-            work_dir / "inputs" / self.format / self.generation_mode / self.compound_transformation_name)
+            work_dir / "inputs" / self.format / self.generation_mode / self.compound_transformation_name / f"run-{self.run_number}")
+
+
+"""
+Recurrent k-path coverage.
+"""
+
+
+class WithRecurrent2PathNCoverageStrategyWithOriginalGrammar(
+    names.WithIdentityCompoundTransformationName, modes.WithRecurrent2PathNCoverageGenerationMode): pass
+
+
+class GenerateWithRecurrent2PathNCoverageStrategyWithOriginalGrammar(GenerateInputsWithTribble,
+                                                                     WithRecurrent2PathNCoverageStrategyWithOriginalGrammar):
+    @property
+    def transformation_task(self):
+        return transformations.ProduceOriginalGrammar
 
 
 class WithRecurrent2PathNCoverageStrategyWithChomskyGrammar(
