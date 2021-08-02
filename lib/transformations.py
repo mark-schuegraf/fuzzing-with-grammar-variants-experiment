@@ -48,7 +48,7 @@ class TransformGrammarWithTribble(luigi.Task, names.WithCompoundTransformationNa
                     f"--output-grammar-file={out}",
                     f"--loading-strategy={self.choose_loading_strategy_based_on_file_extension()}",
                     "--storing-strategy=marshal",
-                    f"--mode={self.transformation_mode_name}",
+                    f"--mode={self.transformation_mode}",
                     ]
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
@@ -65,7 +65,7 @@ class ElementaryTransformGrammarWithTribble(TransformGrammarWithTribble, metacla
     def output(self):
         """If the transformation is elementary, store the intermediate grammar in a subdirectory of the target path."""
         return luigi.LocalTarget(
-            work_dir / "transformed-grammars" / self.format / self.compound_transformation_name / self.transformation_mode_name / self.format)
+            work_dir / "transformed-grammars" / self.format / self.compound_transformation_name / self.transformation_mode / self.format)
 
 
 class CompoundTransformGrammarWithTribble(TransformGrammarWithTribble, metaclass=ABCMeta):
