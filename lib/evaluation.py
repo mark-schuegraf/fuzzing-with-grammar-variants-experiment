@@ -6,6 +6,7 @@ This module contains luigi tasks evaluating the coverage reports produced during
 """
 
 from abc import ABCMeta, abstractmethod
+from typing import List
 
 import luigi
 import pandas as pd
@@ -13,10 +14,50 @@ from luigi.util import inherits
 
 from lib import execution
 from lib import metrics, work_dir
+from lib import tooling
+from lib import transformations
+from lib import utils
 
 
-class AggregateReducedCoverageReports(luigi.Task, metaclass=ABCMeta): pass
-    #TODO implement this
+@inherits(tooling.BuildSubject, transformations.TransformGrammarWithTribble)
+class AggregateReducedCoverageReports(luigi.Task, utils.StableRandomness, metaclass=ABCMeta):
+    total_number_of_runs: int = luigi.IntParameter(
+        description="The number of runs to conduct per combination of transformation, fuzzer and subject.")
+
+    def requires(self):
+        # TODO move this out of here, have as parameter and then invoke with this on top level?
+        format_seed = self.random_int(self.random_seed, self.format)
+        run_numbers = range(self.total_number_of_runs)
+        run_results = [self.clone(self.reduction_task, run_number=i, tribble_generation_seed=format_seed) for i in
+                       run_numbers]
+        return run_results
+
+    @property
+    @abstractmethod
+    def reduction_task(self):
+        raise NotImplementedError("Must specify the reduction task evaluating a metric on a single run's results!")
+
+    def run(self):
+        metric_values = self._read_metric_values_from_files()
+        metric_series = self._concatenate_values_into_series(metric_values)
+        self._safe_write_series_to_csv(metric_series)
+
+    def _read_metric_values_from_files(self) -> List:
+        return [pd.read_csv(file.path) for file in self.input()]
+
+    @staticmethod
+    def _concatenate_values_into_series(values: List) -> pd.Series:
+        return pd.concat(values)
+
+    def _safe_write_series_to_csv(self, series: pd.Series):
+        with self.output().temporary_path() as out:
+            series.to_csv(out, index=False)
+
+    def output(self):
+        return luigi.LocalTarget(
+            work_dir / "results" / "processed" / self.format / self.subject_name / self.generation_mode /
+            self.compound_transformation_name / self.metric_name / "values.csv")
+
 
 @inherits(execution.RunSubjectAndProduceCoverageReport)
 class ReduceIndividualCoverageReport(luigi.Task, metrics.WithEvaluationMetric, metaclass=ABCMeta):
@@ -52,6 +93,22 @@ Achieved coverage evaluation.
 """
 
 
+class AggregateCoverageOverMultipleRuns(AggregateReducedCoverageReports,
+                                        metrics.WithCoverageEvaluationMetric, metaclass=ABCMeta): pass
+
+
+class AggregateCoverageWithRecurrent2PathWithOriginalGrammar(AggregateCoverageOverMultipleRuns):
+    @property
+    def reduction_task(self):
+        return ReduceToCoverageWithRecurrent2PathWithOriginalGrammar
+
+
+class AggregateCoverageWithRecurrent2PathWithChomskyGrammar(AggregateCoverageOverMultipleRuns):
+    @property
+    def reduction_task(self):
+        return ReduceToCoverageWithRecurrent2PathWithChomskyGrammar
+
+
 class ReduceReportWithCoverageMetric(ReduceIndividualCoverageReport,
                                      metrics.WithCoverageEvaluationMetric, metaclass=ABCMeta): pass
 
@@ -71,6 +128,23 @@ class ReduceToCoverageWithRecurrent2PathWithChomskyGrammar(ReduceReportWithCover
 """
 Coverage growth rate evaluation.
 """
+
+
+class AggregateCoverageGrowthRateOverMultipleRuns(AggregateReducedCoverageReports,
+                                                  metrics.WithCoverageGrowthRateEvaluationMetric,
+                                                  metaclass=ABCMeta): pass
+
+
+class AggregateCoverageGrowthRateWithRecurrent2PathWithOriginalGrammar(AggregateCoverageGrowthRateOverMultipleRuns):
+    @property
+    def reduction_task(self):
+        return ReduceToCoverageGrowthRateWithRecurrent2PathWithOriginalGrammar
+
+
+class AggregateCoverageGrowthRateWithRecurrent2PathWithChomskyGrammar(AggregateCoverageGrowthRateOverMultipleRuns):
+    @property
+    def reduction_task(self):
+        return ReduceToCoverageGrowthRateWithRecurrent2PathWithChomskyGrammar
 
 
 class ReduceReportWithCoverageGrowthRateMetric(ReduceIndividualCoverageReport,
