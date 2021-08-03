@@ -68,7 +68,7 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
     def _derive_tribble_generation_seed_from_format_seed(self):
         # also make the seed depend on the output path starting from work_dir
         rel_output_path = Path(self.output().path).relative_to(work_dir)
-        return self.random_int(self.tribble_generation_seed, self.generation_mode, self.format,
+        return self.random_int(self.format_seed, self.generation_mode, self.format,
                                str(self.run_number), *rel_output_path.parts)
 
     def output(self):
