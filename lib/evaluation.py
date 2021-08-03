@@ -21,16 +21,19 @@ from lib import utils
 from lib import work_dir
 
 
-@inherits(tooling.BuildSubject, transformations.TransformGrammarWithTribble)
-class AggregateReducedCoverageReports(luigi.Task, utils.StableRandomness, metaclass=ABCMeta):
+class AggregateReducedCoverageReports(luigi.Task, utils.StableRandomness, metrics.WithEvaluationMetric,
+                                      names.WithCompoundTransformationName, modes.WithGenerationMode,
+                                      metaclass=ABCMeta):
     total_number_of_runs: int = luigi.IntParameter(
         description="The number of runs to conduct per combination of transformation, fuzzer and subject.")
+    subject_name: str = luigi.Parameter(description="The name of the subject to run.")
+    format: str = luigi.Parameter(description="The format specified by the input grammar.")
+    format_seed: int = luigi.IntParameter(
+        description="The random seed from which tribble generation seeds for this format are derived.")
 
     def requires(self):
-        # TODO move this out of here, have as parameter and then invoke with this on top level?
-        format_seed = self.random_int(self.random_seed, self.format)
         run_numbers = range(self.total_number_of_runs)
-        run_results = [self.clone(self.reduction_task, run_number=i, tribble_generation_seed=format_seed) for i in
+        run_results = [self.clone(self.reduction_task, run_number=i, tribble_generation_seed=self.format_seed) for i in
                        run_numbers]
         return run_results
 
@@ -62,7 +65,8 @@ class AggregateReducedCoverageReports(luigi.Task, utils.StableRandomness, metacl
 
 
 @inherits(execution.RunSubjectAndProduceCoverageReport)
-class ReduceIndividualCoverageReport(luigi.Task, metrics.WithEvaluationMetric, metaclass=ABCMeta):
+class ReduceIndividualCoverageReport(luigi.Task, metrics.WithEvaluationMetric, names.WithCompoundTransformationName,
+                                     modes.WithGenerationMode, metaclass=ABCMeta):
     def requires(self):
         return self.clone(self.execution_task)
 
@@ -99,13 +103,15 @@ class AggregateCoverageOverMultipleRuns(AggregateReducedCoverageReports,
                                         metrics.WithCoverageEvaluationMetric, metaclass=ABCMeta): pass
 
 
-class AggregateCoverageWithRecurrent2PathWithOriginalGrammar(AggregateCoverageOverMultipleRuns):
+class AggregateCoverageWithRecurrent2PathWithOriginalGrammar(AggregateCoverageOverMultipleRuns,
+                                                             generation.WithRecurrent2PathNCoverageStrategyWithOriginalGrammar):
     @property
     def reduction_task(self):
         return ReduceToCoverageWithRecurrent2PathWithOriginalGrammar
 
 
-class AggregateCoverageWithRecurrent2PathWithChomskyGrammar(AggregateCoverageOverMultipleRuns):
+class AggregateCoverageWithRecurrent2PathWithChomskyGrammar(AggregateCoverageOverMultipleRuns,
+                                                            generation.WithRecurrent2PathNCoverageStrategyWithChomskyGrammar):
     @property
     def reduction_task(self):
         return ReduceToCoverageWithRecurrent2PathWithChomskyGrammar
@@ -115,13 +121,15 @@ class ReduceReportWithCoverageMetric(ReduceIndividualCoverageReport,
                                      metrics.WithCoverageEvaluationMetric, metaclass=ABCMeta): pass
 
 
-class ReduceToCoverageWithRecurrent2PathWithOriginalGrammar(ReduceReportWithCoverageMetric):
+class ReduceToCoverageWithRecurrent2PathWithOriginalGrammar(ReduceReportWithCoverageMetric,
+                                                            generation.WithRecurrent2PathNCoverageStrategyWithOriginalGrammar):
     @property
     def execution_task(self):
         return execution.RunSubjectWithRecurrent2PathNCoverageStrategyWithOriginalGrammar
 
 
-class ReduceToCoverageWithRecurrent2PathWithChomskyGrammar(ReduceReportWithCoverageMetric):
+class ReduceToCoverageWithRecurrent2PathWithChomskyGrammar(ReduceReportWithCoverageMetric,
+                                                           generation.WithRecurrent2PathNCoverageStrategyWithChomskyGrammar):
     @property
     def execution_task(self):
         return execution.RunSubjectWithRecurrent2PathNCoverageStrategyWithChomskyGrammar
@@ -137,13 +145,15 @@ class AggregateCoverageGrowthRateOverMultipleRuns(AggregateReducedCoverageReport
                                                   metaclass=ABCMeta): pass
 
 
-class AggregateCoverageGrowthRateWithRecurrent2PathWithOriginalGrammar(AggregateCoverageGrowthRateOverMultipleRuns):
+class AggregateCoverageGrowthRateWithRecurrent2PathWithOriginalGrammar(AggregateCoverageGrowthRateOverMultipleRuns,
+                                                                       generation.WithRecurrent2PathNCoverageStrategyWithOriginalGrammar):
     @property
     def reduction_task(self):
         return ReduceToCoverageGrowthRateWithRecurrent2PathWithOriginalGrammar
 
 
-class AggregateCoverageGrowthRateWithRecurrent2PathWithChomskyGrammar(AggregateCoverageGrowthRateOverMultipleRuns):
+class AggregateCoverageGrowthRateWithRecurrent2PathWithChomskyGrammar(AggregateCoverageGrowthRateOverMultipleRuns,
+                                                                      generation.WithRecurrent2PathNCoverageStrategyWithChomskyGrammar):
     @property
     def reduction_task(self):
         return ReduceToCoverageGrowthRateWithRecurrent2PathWithChomskyGrammar
@@ -153,13 +163,15 @@ class ReduceReportWithCoverageGrowthRateMetric(ReduceIndividualCoverageReport,
                                                metrics.WithCoverageGrowthRateEvaluationMetric, metaclass=ABCMeta): pass
 
 
-class ReduceToCoverageGrowthRateWithRecurrent2PathWithOriginalGrammar(ReduceReportWithCoverageGrowthRateMetric):
+class ReduceToCoverageGrowthRateWithRecurrent2PathWithOriginalGrammar(ReduceReportWithCoverageGrowthRateMetric,
+                                                                      generation.WithRecurrent2PathNCoverageStrategyWithOriginalGrammar):
     @property
     def execution_task(self):
         return execution.RunSubjectWithRecurrent2PathNCoverageStrategyWithOriginalGrammar
 
 
-class ReduceToCoverageGrowthRateWithRecurrent2PathWithChomskyGrammar(ReduceReportWithCoverageGrowthRateMetric):
+class ReduceToCoverageGrowthRateWithRecurrent2PathWithChomskyGrammar(ReduceReportWithCoverageGrowthRateMetric,
+                                                                     generation.WithRecurrent2PathNCoverageStrategyWithChomskyGrammar):
     @property
     def execution_task(self):
         return execution.RunSubjectWithRecurrent2PathNCoverageStrategyWithChomskyGrammar
