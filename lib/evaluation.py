@@ -6,6 +6,7 @@ This module contains luigi tasks evaluating the coverage reports produced during
 """
 
 from abc import ABCMeta, abstractmethod
+from pathlib import Path
 from typing import List
 
 import luigi
@@ -21,8 +22,16 @@ from lib import utils
 from lib import work_dir
 
 
+class TaskWithSafeCSVWriter(luigi.Task):
+    def _safe_write_to_csv(self, series: pd.Series):
+        Path(self.output().path).parent.mkdir(parents=True, exist_ok=True)
+        with self.output().temporary_path() as out:
+            series.to_csv(out, index=False)
+
+
 @inherits(execution.RunSubjectAndProduceCoverageReport)
-class ReduceIndividualCoverageReport(luigi.Task, metrics.WithEvaluationMetric, names.WithCompoundTransformationName,
+class ReduceIndividualCoverageReport(TaskWithSafeCSVWriter, metrics.WithEvaluationMetric,
+                                     names.WithCompoundTransformationName,
                                      modes.WithGenerationMode, metaclass=ABCMeta):
     def requires(self):
         return self.clone(self.execution_task)
@@ -35,15 +44,11 @@ class ReduceIndividualCoverageReport(luigi.Task, metrics.WithEvaluationMetric, n
     def run(self):
         coverages = self._read_coverages_into_series()
         value = self.evaluate_metric_on_coverage_series(coverages)
-        self._write_metric_value_to_csv(value)
+        self._safe_write_to_csv(value)
 
     def _read_coverages_into_series(self) -> pd.Series:
         coverage_file = self.input()
         return pd.read_csv(coverage_file.path, index_col="filename")["branch"]
-
-    def _write_metric_value_to_csv(self, value: pd.Series):
-        output_file = self.output()
-        value.to_csv(output_file.path, index=False)
 
     def output(self):
         return luigi.LocalTarget(
@@ -51,7 +56,7 @@ class ReduceIndividualCoverageReport(luigi.Task, metrics.WithEvaluationMetric, n
             self.compound_transformation_name / f"run-{self.run_number}" / self.metric_name / "value.csv")
 
 
-class AggregateReducedCoverageReports(luigi.Task, utils.StableRandomness, metrics.WithEvaluationMetric,
+class AggregateReducedCoverageReports(TaskWithSafeCSVWriter, utils.StableRandomness, metrics.WithEvaluationMetric,
                                       names.WithCompoundTransformationName, modes.WithGenerationMode,
                                       metaclass=ABCMeta):
     total_number_of_runs: int = luigi.IntParameter(
@@ -75,7 +80,7 @@ class AggregateReducedCoverageReports(luigi.Task, utils.StableRandomness, metric
     def run(self):
         metric_values = self._read_metric_values_from_files()
         metric_series = self._concatenate_values_into_series(metric_values)
-        self._safe_write_series_to_csv(metric_series)
+        self._safe_write_to_csv(metric_series)
 
     def _read_metric_values_from_files(self) -> List:
         return [pd.read_csv(file.path) for file in self.input()]
@@ -83,10 +88,6 @@ class AggregateReducedCoverageReports(luigi.Task, utils.StableRandomness, metric
     @staticmethod
     def _concatenate_values_into_series(values: List) -> pd.Series:
         return pd.concat(values)
-
-    def _safe_write_series_to_csv(self, series: pd.Series):
-        with self.output().temporary_path() as out:
-            series.to_csv(out, index=False)
 
     def output(self):
         return luigi.LocalTarget(
