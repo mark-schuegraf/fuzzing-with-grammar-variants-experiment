@@ -26,8 +26,9 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
     format: str = luigi.Parameter(description="The format specified by the input grammar.")
     run_number: int = luigi.IntParameter(
         description="The run number corresponding to the input set produced during generation.")
-    tribble_generation_seed: int = luigi.IntParameter(description="The seed for this tribble generation run.",
-                                                      positional=False, significant=False)
+    tribble_generation_seed: int = luigi.IntParameter(
+        description="The random seed from which the seed for this tribble generation run is derived.",
+        positional=False, significant=False)
     resources = {"ram": 4}
 
     @property
