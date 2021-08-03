@@ -13,10 +13,12 @@ import pandas as pd
 from luigi.util import inherits
 
 from lib import execution
-from lib import metrics, work_dir
-from lib import tooling
-from lib import transformations
+from lib import generation
+from lib import metrics
+from lib import modes
+from lib import names
 from lib import utils
+from lib import work_dir
 
 
 @inherits(tooling.BuildSubject, transformations.TransformGrammarWithTribble)
