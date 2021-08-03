@@ -32,6 +32,13 @@ class StableRandomness(object):
         return rnd.randrange(StableRandomness.MAX_RND_INT)
 
 
+def choose_grammar_loading_strategy_based_on_file_extension(grammar_file_path) -> str:
+    if grammar_file_path.endswith(".scala") or grammar_file_path.endswith(".tribble"):
+        return "parse"
+    else:
+        return "unmarshal"
+
+
 def remove_tree(path: Path) -> None:
     """Recursively removes the entire file tree under and including the given path."""
     if path.is_dir():

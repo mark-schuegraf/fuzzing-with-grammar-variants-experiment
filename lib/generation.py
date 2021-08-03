@@ -61,7 +61,7 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
                     f'--suffix={format_info["suffix"]}',
                     f"--out-dir={out}",
                     f"--grammar-file={transformed_grammar_file}",
-                    f"--loading-strategy={self.choose_loading_strategy_based_on_file_extension()}",
+                    f"--loading-strategy={utils.choose_grammar_loading_strategy_based_on_file_extension(transformed_grammar_file)}",
                     f"--mode={self.generation_mode}",
                     ]
             logging.info("Launching %s", " ".join(args))
@@ -71,14 +71,7 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
         # also make the seed depend on the output path starting from work_dir
         rel_output_path = Path(self.output().path).relative_to(work_dir)
         return self.random_int(self.tribble_generation_seed, self.generation_mode, self.format,
-                                      str(self.run_number), *rel_output_path.parts)
-
-    def choose_loading_strategy_based_on_file_extension(self):
-        grammar_file_path = self.input()[1].path
-        if grammar_file_path.endswith(".scala") or grammar_file_path.endswith(".tribble"):
-            return "parse"
-        else:
-            return "unmarshal"
+                               str(self.run_number), *rel_output_path.parts)
 
     def output(self):
         return luigi.LocalTarget(

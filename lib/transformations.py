@@ -15,6 +15,7 @@ from lib import modes
 from lib import names
 from lib import subjects
 from lib import tooling
+from lib import utils
 from lib import work_dir
 
 
@@ -34,6 +35,7 @@ class TransformGrammarWithTribble(luigi.Task, names.WithCompoundTransformationNa
     def run(self):
         tribble_jar = self.input()[0].path
         automaton_dir = work_dir / "tools" / "tribble-automaton-cache" / self.format
+        original_grammar_file = self.input()[1].path
         with self.output().temporary_path() as out:
             args = ["java",
                     "-Xss100m",
@@ -44,21 +46,14 @@ class TransformGrammarWithTribble(luigi.Task, names.WithCompoundTransformationNa
                     "--ignore-grammar-cache",
                     "--no-check-duplicate-alts",
                     "transform-grammar",
-                    f"--grammar-file={self.input()[1].path}",
+                    f"--grammar-file={original_grammar_file}",
                     f"--output-grammar-file={out}",
-                    f"--loading-strategy={self.choose_loading_strategy_based_on_file_extension()}",
+                    f"--loading-strategy={utils.choose_grammar_loading_strategy_based_on_file_extension(original_grammar_file)}",
                     "--storing-strategy=marshal",
                     f"--mode={self.transformation_mode}",
                     ]
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
-
-    def choose_loading_strategy_based_on_file_extension(self):
-        grammar_file_path = self.input()[1].path
-        if grammar_file_path.endswith(".scala") or grammar_file_path.endswith(".tribble"):
-            return "parse"
-        else:
-            return "unmarshal"
 
 
 class ElementaryTransformGrammarWithTribble(TransformGrammarWithTribble, metaclass=ABCMeta):
