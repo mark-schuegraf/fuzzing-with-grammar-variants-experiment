@@ -27,7 +27,7 @@ class WithCoverageEvaluationMetric(WithEvaluationMetric):
         return "coverage"
 
     def evaluate_metric_on_coverage_series(self, coverages: pd.Series) -> pd.Series:
-        return coverages.tail(1)
+        return coverages.tail(1).rename(self.metric_name)
 
 
 class WithCoverageGrowthRateEvaluationMetric(WithEvaluationMetric):
@@ -36,4 +36,4 @@ class WithCoverageGrowthRateEvaluationMetric(WithEvaluationMetric):
         return "coverage-growth-rate"
 
     def evaluate_metric_on_coverage_series(self, coverages: pd.Series) -> pd.Series:
-        return coverages.sum()
+        return pd.Series(data=coverages.sum(), name=self.metric_name)
