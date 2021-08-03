@@ -19,7 +19,7 @@ from lib import tooling
 from lib import work_dir
 
 
-@inherits(tooling.BuildSubject, tooling.DownloadOriginalBytecode)
+@inherits(tooling.BuildSubject, tooling.DownloadOriginalBytecode, generation.GenerateInputsWithTribble)
 class RunSubjectAndProduceCoverageReport(luigi.Task, names.WithCompoundTransformationName, modes.WithGenerationMode,
                                          metaclass=ABCMeta):
     format: str = luigi.Parameter(description="The format specified by the input grammar.")
@@ -57,7 +57,6 @@ class RunSubjectAndProduceCoverageReport(luigi.Task, names.WithCompoundTransform
                                  self.compound_transformation_name / f"run-{self.run_number}" / "coverage.csv")
 
 
-@inherits(generation.GenerateWithRecurrent2PathNCoverageStrategyWithOriginalGrammar)
 class RunSubjectWithRecurrent2PathNCoverageStrategyWithOriginalGrammar(RunSubjectAndProduceCoverageReport,
                                                                        generation.WithRecurrent2PathNCoverageStrategyWithOriginalGrammar):
     def requires(self):
@@ -67,7 +66,6 @@ class RunSubjectWithRecurrent2PathNCoverageStrategyWithOriginalGrammar(RunSubjec
         return dependencies
 
 
-@inherits(generation.GenerateWithRecurrent2PathNCoverageStrategyWithChomskyGrammar)
 class RunSubjectWithRecurrent2PathNCoverageStrategyWithChomskyGrammar(RunSubjectAndProduceCoverageReport,
                                                                       generation.WithRecurrent2PathNCoverageStrategyWithChomskyGrammar):
     def requires(self):

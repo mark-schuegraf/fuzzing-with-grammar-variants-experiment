@@ -11,6 +11,7 @@ from abc import ABCMeta, abstractmethod
 from pathlib import Path
 
 import luigi
+from luigi.util import inherits
 
 from lib import modes
 from lib import names
@@ -21,16 +22,13 @@ from lib import utils
 from lib import work_dir
 
 
+@inherits(transformations.TransformGrammarWithTribble)
 class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCompoundTransformationName,
                                 modes.WithGenerationMode, metaclass=ABCMeta):
-    format: str = luigi.Parameter(description="The format specified by the input grammar.")
     run_number: int = luigi.IntParameter(
         description="The run number corresponding to the input set produced during generation.")
     format_seed: int = luigi.IntParameter(
         description="The random seed from which tribble generation seeds for this format are derived.")
-    tribble_generation_seed: int = luigi.IntParameter(
-        description="The random seed from which the seed for this tribble generation run is derived.",
-        positional=False, significant=False)
     resources = {"ram": 4}
 
     @property
