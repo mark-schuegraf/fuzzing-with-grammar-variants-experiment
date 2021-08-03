@@ -9,14 +9,27 @@ import logging
 import sys
 
 import luigi
-from luigi.util import requires
 
-from lib import execution
+from lib import evaluation
+from lib import utils
 
 
-@requires(execution.RunSubjectWithRecurrent2PathNCoverageStrategyWithChomskyGrammar)
-class Experiment(luigi.WrapperTask):
+class Experiment(luigi.WrapperTask, utils.StableRandomness):
     """Vertical prototype of the full experiment."""
+    random_seed: int = luigi.IntParameter(
+        description="The main seed for this experiment. All other random seeds will be derived from this one.",
+        positional=False)
+    total_number_of_runs: int = luigi.IntParameter(
+        description="The number of runs to conduct per combination of transformation, fuzzer and subject.")
+    subject_name: str = luigi.Parameter(description="The name of the subject to run.")
+    format: str = luigi.Parameter(description="The format specified by the input grammar.")
+
+    def requires(self):
+        format_seed = self.random_int(self.random_seed, self.format)
+        return [self.clone(evaluation.AggregateCoverageWithRecurrent2PathWithChomskyGrammar,
+                           subject_name="argo", format_seed=format_seed),
+                self.clone(evaluation.AggregateCoverageGrowthRateWithRecurrent2PathWithChomskyGrammar,
+                           subject_name="argo", format_seed=format_seed)]
 
 
 if __name__ == '__main__':
