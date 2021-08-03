@@ -26,6 +26,8 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
     format: str = luigi.Parameter(description="The format specified by the input grammar.")
     run_number: int = luigi.IntParameter(
         description="The run number corresponding to the input set produced during generation.")
+    format_seed: int = luigi.IntParameter(
+        description="The random seed from which tribble generation seeds for this format are derived.")
     tribble_generation_seed: int = luigi.IntParameter(
         description="The random seed from which the seed for this tribble generation run is derived.",
         positional=False, significant=False)
@@ -44,10 +46,7 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
         automaton_dir = work_dir / "tools" / "tribble-automaton-cache" / self.format
         transformed_grammar_file = self.input()[1].path
         format_info = subjects[self.format]
-        # also make the seed depend on the output path starting from work_dir
-        rel_output_path = Path(self.output().path).relative_to(work_dir)
-        random_seed = self.random_int(self.tribble_generation_seed, self.generation_mode, self.format,
-                                      str(self.run_number), *rel_output_path.parts)
+        random_seed = self._derive_tribble_generation_seed_from_format_seed()
         with self.output().temporary_path() as out:
             args = ["java",
                     "-Xss100m",
@@ -67,6 +66,12 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
                     ]
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
+
+    def _derive_tribble_generation_seed_from_format_seed(self):
+        # also make the seed depend on the output path starting from work_dir
+        rel_output_path = Path(self.output().path).relative_to(work_dir)
+        return self.random_int(self.tribble_generation_seed, self.generation_mode, self.format,
+                                      str(self.run_number), *rel_output_path.parts)
 
     def choose_loading_strategy_based_on_file_extension(self):
         grammar_file_path = self.input()[1].path
