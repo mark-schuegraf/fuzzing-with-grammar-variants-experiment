@@ -21,7 +21,7 @@ from lib import work_dir
 
 class TransformGrammarWithTribble(luigi.Task, names.WithCompoundTransformationName, modes.WithTransformationMode,
                                   metaclass=ABCMeta):
-    format: str = luigi.Parameter(description="The format specified by the input grammar.")
+    language: str = luigi.Parameter(description="The language specified by the input grammar.")
     resources = {"ram": 16}
 
     @property
@@ -34,7 +34,7 @@ class TransformGrammarWithTribble(luigi.Task, names.WithCompoundTransformationNa
 
     def run(self):
         tribble_jar = self.input()[0].path
-        automaton_dir = work_dir / "tools" / "tribble-automaton-cache" / self.format
+        automaton_dir = work_dir / "tools" / "tribble-automaton-cache" / self.language
         original_grammar_file = self.input()[1].path
         loading_strategy = utils.choose_grammar_loading_strategy_based_on_file_extension(original_grammar_file)
         with self.output().temporary_path() as out:
@@ -61,21 +61,21 @@ class ElementaryTransformGrammarWithTribble(TransformGrammarWithTribble, metacla
     def output(self):
         """If the transformation is elementary, store the intermediate grammar in a subdirectory of the target path."""
         return luigi.LocalTarget(
-            work_dir / "transformed-grammars" / self.format / self.compound_transformation_name / self.transformation_mode / self.format)
+            work_dir / "transformed-grammars" / self.language / self.compound_transformation_name / self.transformation_mode / self.language)
 
 
 class CompoundTransformGrammarWithTribble(TransformGrammarWithTribble, metaclass=ABCMeta):
     def output(self):
         """If the transformation is compound, store the output grammar directly in the transformation directory."""
         return luigi.LocalTarget(
-            work_dir / "transformed-grammars" / self.format / self.compound_transformation_name / self.format)
+            work_dir / "transformed-grammars" / self.language / self.compound_transformation_name / self.language)
 
 
 class ProduceOriginalGrammar(luigi.ExternalTask):
-    format: str = luigi.Parameter(description="The format specified by the input grammar.")
+    language: str = luigi.Parameter(description="The language specified by the input grammar.")
 
     def output(self):
-        return luigi.LocalTarget(work_dir / "grammars" / subjects[self.format]["grammar"])
+        return luigi.LocalTarget(work_dir / "grammars" / subjects[self.language]["grammar"])
 
 
 """

@@ -52,7 +52,7 @@ class ReduceIndividualCoverageReport(TaskWithSafeCSVWriter, metrics.WithEvaluati
 
     def output(self):
         return luigi.LocalTarget(
-            work_dir / "results" / "processed" / self.format / self.subject_name / self.generation_mode /
+            work_dir / "results" / "processed" / self.language / self.subject_name / self.generation_mode /
             self.compound_transformation_name / f"run-{self.run_number}" / self.metric_name / "value.csv")
 
 
@@ -62,9 +62,9 @@ class AggregateReducedCoverageReports(TaskWithSafeCSVWriter, utils.StableRandomn
     total_number_of_runs: int = luigi.IntParameter(
         description="The number of runs to conduct per combination of transformation, fuzzer and subject.")
     subject_name: str = luigi.Parameter(description="The name of the subject to run.")
-    format: str = luigi.Parameter(description="The format specified by the input grammar.")
-    format_seed: int = luigi.IntParameter(
-        description="The random seed from which tribble generation seeds for this format are derived.")
+    language: str = luigi.Parameter(description="The language specified by the input grammar.")
+    language_seed: int = luigi.IntParameter(
+        description="The random seed from which tribble generation seeds for this language are derived.")
 
     def requires(self):
         run_numbers = range(self.total_number_of_runs)
@@ -91,7 +91,7 @@ class AggregateReducedCoverageReports(TaskWithSafeCSVWriter, utils.StableRandomn
 
     def output(self):
         return luigi.LocalTarget(
-            work_dir / "results" / "processed" / self.format / self.subject_name / self.generation_mode /
+            work_dir / "results" / "processed" / self.language / self.subject_name / self.generation_mode /
             self.compound_transformation_name / self.metric_name / "values.csv")
 
 

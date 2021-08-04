@@ -27,8 +27,8 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
                                 modes.WithGenerationMode, metaclass=ABCMeta):
     run_number: int = luigi.IntParameter(
         description="The run number corresponding to the input set produced during generation.")
-    format_seed: int = luigi.IntParameter(
-        description="The random seed from which tribble generation seeds for this format are derived.")
+    language_seed: int = luigi.IntParameter(
+        description="The random seed from which tribble generation seeds for this language are derived.")
     resources = {"ram": 4}
 
     @property
@@ -41,11 +41,11 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
 
     def run(self):
         tribble_jar = self.input()[0].path
-        automaton_dir = work_dir / "tools" / "tribble-automaton-cache" / self.format
+        automaton_dir = work_dir / "tools" / "tribble-automaton-cache" / self.language
         transformed_grammar_file = self.input()[1].path
         loading_strategy = utils.choose_grammar_loading_strategy_based_on_file_extension(transformed_grammar_file)
-        format_info = subjects[self.format]
-        random_seed = self._derive_tribble_generation_seed_from_format_seed()
+        language_info = subjects[self.language]
+        random_seed = self._derive_tribble_generation_seed_from_language_seed()
         with self.output().temporary_path() as out:
             args = ["java",
                     "-Xss100m",
@@ -57,7 +57,7 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
                     "--ignore-grammar-cache",
                     "--no-check-duplicate-alts",
                     "generate",
-                    f'--suffix={format_info["suffix"]}',
+                    f'--suffix={language_info["suffix"]}',
                     f"--out-dir={out}",
                     f"--grammar-file={transformed_grammar_file}",
                     f"--loading-strategy={loading_strategy}",
@@ -66,15 +66,15 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
-    def _derive_tribble_generation_seed_from_format_seed(self):
+    def _derive_tribble_generation_seed_from_language_seed(self):
         # also make the seed depend on the output path starting from work_dir
         rel_output_path = Path(self.output().path).relative_to(work_dir)
-        return self.random_int(self.format_seed, self.generation_mode, self.format,
+        return self.random_int(self.language_seed, self.generation_mode, self.language,
                                str(self.run_number), *rel_output_path.parts)
 
     def output(self):
         return luigi.LocalTarget(
-            work_dir / "inputs" / self.format / self.generation_mode / self.compound_transformation_name / f"run-{self.run_number}")
+            work_dir / "inputs" / self.language / self.generation_mode / self.compound_transformation_name / f"run-{self.run_number}")
 
 
 """

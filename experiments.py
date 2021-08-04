@@ -22,14 +22,14 @@ class Experiment(luigi.WrapperTask, utils.StableRandomness):
     total_number_of_runs: int = luigi.IntParameter(
         description="The number of runs to conduct per combination of transformation, fuzzer and subject.")
     subject_name: str = luigi.Parameter(description="The name of the subject to run.")
-    format: str = luigi.Parameter(description="The format specified by the input grammar.")
+    language: str = luigi.Parameter(description="The language specified by the input grammar.")
 
     def requires(self):
-        format_seed = self.random_int(self.random_seed, self.format)
+        language_seed = self.random_int(self.random_seed, self.language)
         return [self.clone(evaluation.AggregateCoverageWithRecurrent2PathWithChomskyGrammar,
-                           subject_name="argo", format_seed=format_seed),
+                           subject_name="argo", language_seed=language_seed),
                 self.clone(evaluation.AggregateCoverageGrowthRateWithRecurrent2PathWithChomskyGrammar,
-                           subject_name="argo", format_seed=format_seed)]
+                           subject_name="argo", language_seed=language_seed)]
 
 
 if __name__ == '__main__':

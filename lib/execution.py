@@ -52,7 +52,7 @@ class RunSubjectAndProduceCoverageReport(luigi.Task, names.WithCompoundTransform
         subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
     def output(self):
-        return luigi.LocalTarget(work_dir / "results" / "raw" / self.format / self.subject_name / self.generation_mode /
+        return luigi.LocalTarget(work_dir / "results" / "raw" / self.language / self.subject_name / self.generation_mode /
                                  self.compound_transformation_name / f"run-{self.run_number}" / "coverage.csv")
 
 
