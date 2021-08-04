@@ -22,7 +22,7 @@ from lib import utils
 from lib import work_dir
 
 
-class TaskWithSafeCSVWriter(luigi.Task):
+class TaskWithSafeCSVWriter(luigi.Task, metaclass=ABCMeta):
     def _safe_write_to_csv(self, series: pd.Series):
         Path(self.output().path).parent.mkdir(parents=True, exist_ok=True)
         with self.output().temporary_path() as out:
