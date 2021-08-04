@@ -43,6 +43,7 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
         tribble_jar = self.input()[0].path
         automaton_dir = work_dir / "tools" / "tribble-automaton-cache" / self.format
         transformed_grammar_file = self.input()[1].path
+        loading_strategy = utils.choose_grammar_loading_strategy_based_on_file_extension(transformed_grammar_file)
         format_info = subjects[self.format]
         random_seed = self._derive_tribble_generation_seed_from_format_seed()
         with self.output().temporary_path() as out:
@@ -59,7 +60,7 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
                     f'--suffix={format_info["suffix"]}',
                     f"--out-dir={out}",
                     f"--grammar-file={transformed_grammar_file}",
-                    f"--loading-strategy={utils.choose_grammar_loading_strategy_based_on_file_extension(transformed_grammar_file)}",
+                    f"--loading-strategy={loading_strategy}",
                     f"--mode={self.generation_mode}",
                     ]
             logging.info("Launching %s", " ".join(args))

@@ -36,6 +36,7 @@ class TransformGrammarWithTribble(luigi.Task, names.WithCompoundTransformationNa
         tribble_jar = self.input()[0].path
         automaton_dir = work_dir / "tools" / "tribble-automaton-cache" / self.format
         original_grammar_file = self.input()[1].path
+        loading_strategy = utils.choose_grammar_loading_strategy_based_on_file_extension(original_grammar_file)
         with self.output().temporary_path() as out:
             args = ["java",
                     "-Xss100m",
@@ -48,7 +49,7 @@ class TransformGrammarWithTribble(luigi.Task, names.WithCompoundTransformationNa
                     "transform-grammar",
                     f"--grammar-file={original_grammar_file}",
                     f"--output-grammar-file={out}",
-                    f"--loading-strategy={utils.choose_grammar_loading_strategy_based_on_file_extension(original_grammar_file)}",
+                    f"--loading-strategy={loading_strategy}",
                     "--storing-strategy=marshal",
                     f"--mode={self.transformation_mode}",
                     ]
