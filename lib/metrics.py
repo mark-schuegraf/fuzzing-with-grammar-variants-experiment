@@ -6,6 +6,7 @@ This module contains mixins describing evaluation metrics for coverage time seri
 The time series are expected to be pandas series containing cumulative branch coverages.
 """
 from abc import ABCMeta, abstractmethod
+from typing import final
 
 import pandas as pd
 
@@ -26,6 +27,7 @@ class WithCoverageEvaluationMetric(WithEvaluationMetric):
     def metric_name(self) -> str:
         return "coverage"
 
+    @final
     def evaluate_metric_on_coverage_series(self, coverages: pd.Series) -> pd.Series:
         return coverages.tail(1).rename(self.metric_name)
 
@@ -35,5 +37,6 @@ class WithCoverageGrowthRateEvaluationMetric(WithEvaluationMetric):
     def metric_name(self) -> str:
         return "coverage-growth-rate"
 
+    @final
     def evaluate_metric_on_coverage_series(self, coverages: pd.Series) -> pd.Series:
         return pd.Series(data=coverages.sum(), name=self.metric_name)

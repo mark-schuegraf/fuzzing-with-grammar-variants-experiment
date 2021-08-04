@@ -8,6 +8,7 @@ This module contains luigi tasks corresponding to each tribble transformation mo
 import logging
 import subprocess
 from abc import ABCMeta, abstractmethod
+from typing import final
 
 import luigi
 
@@ -29,9 +30,11 @@ class TransformGrammarWithTribble(luigi.Task, names.WithCompoundTransformationNa
     def transformation_task(self):
         raise NotImplementedError("You must specify the previous transformation!")
 
+    @final
     def requires(self):
         return tooling.BuildTribble(), self.clone(self.transformation_task)
 
+    @final
     def run(self):
         tribble_jar = self.input()[0].path
         automaton_dir = work_dir / "tools" / "tribble-automaton-cache" / self.language
@@ -58,6 +61,7 @@ class TransformGrammarWithTribble(luigi.Task, names.WithCompoundTransformationNa
 
 
 class ElementaryTransformGrammarWithTribble(TransformGrammarWithTribble, metaclass=ABCMeta):
+    @final
     def output(self):
         """If the transformation is elementary, store the intermediate grammar in a subdirectory of the target path."""
         return luigi.LocalTarget(
@@ -65,6 +69,7 @@ class ElementaryTransformGrammarWithTribble(TransformGrammarWithTribble, metacla
 
 
 class CompoundTransformGrammarWithTribble(TransformGrammarWithTribble, metaclass=ABCMeta):
+    @final
     def output(self):
         """If the transformation is compound, store the output grammar directly in the transformation directory."""
         return luigi.LocalTarget(
@@ -74,6 +79,7 @@ class CompoundTransformGrammarWithTribble(TransformGrammarWithTribble, metaclass
 class ProduceOriginalGrammar(luigi.ExternalTask):
     language: str = luigi.Parameter(description="The language specified by the input grammar.")
 
+    @final
     def output(self):
         return luigi.LocalTarget(work_dir / "grammars" / subjects[self.language]["grammar"])
 

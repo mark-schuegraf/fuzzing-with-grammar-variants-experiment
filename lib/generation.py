@@ -9,6 +9,7 @@ import logging
 import subprocess
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
+from typing import final
 
 import luigi
 from luigi.util import inherits
@@ -36,9 +37,11 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
     def transformation_task(self):
         raise NotImplementedError("Must specify the transformation of the input grammar to perform beforehand!")
 
+    @final
     def requires(self):
         return tooling.BuildTribble(), self.clone(self.transformation_task)
 
+    @final
     def run(self):
         tribble_jar = self.input()[0].path
         automaton_dir = work_dir / "tools" / "tribble-automaton-cache" / self.language
@@ -66,12 +69,14 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
+    @final
     def _derive_tribble_generation_seed_from_language_seed(self):
         # also make the seed depend on the output path starting from work_dir
         rel_output_path = Path(self.output().path).relative_to(work_dir)
         return self.random_int(self.language_seed, self.generation_mode, self.language,
                                str(self.run_number), *rel_output_path.parts)
 
+    @final
     def output(self):
         return luigi.LocalTarget(
             work_dir / "inputs" / self.language / self.generation_mode / self.compound_transformation_name / f"run-{self.run_number}")

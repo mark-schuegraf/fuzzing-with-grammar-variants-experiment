@@ -7,6 +7,7 @@ This module contains luigi tasks to run the grammar transformation experiments.
 
 import logging
 import sys
+from typing import final
 
 import luigi
 
@@ -24,6 +25,7 @@ class Experiment(luigi.WrapperTask, utils.StableRandomness):
     subject_name: str = luigi.Parameter(description="The name of the subject to run.")
     language: str = luigi.Parameter(description="The language specified by the input grammar.")
 
+    @final
     def requires(self):
         language_seed = self.random_int(self.random_seed, self.language)
         return [self.clone(evaluation.AggregateCoverageWithRecurrent2PathWithChomskyGrammar,

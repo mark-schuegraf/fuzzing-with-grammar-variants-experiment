@@ -8,6 +8,7 @@ This module contains luigi tasks executing each subject in the subject collectio
 import logging
 import subprocess
 from abc import ABCMeta
+from typing import final
 
 import luigi
 from luigi.util import inherits
@@ -32,6 +33,7 @@ class RunSubjectAndProduceCoverageReport(luigi.Task, names.WithCompoundTransform
             "original_jar": self.clone(tooling.DownloadOriginalBytecode),
         }
 
+    @final
     def run(self):
         subject_jar = self.input()["subject_jar"].path
         original_jar = self.input()["original_jar"].path
@@ -51,6 +53,7 @@ class RunSubjectAndProduceCoverageReport(luigi.Task, names.WithCompoundTransform
         logging.info("Launching %s", " ".join(args))
         subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
+    @final
     def output(self):
         return luigi.LocalTarget(work_dir / "results" / "raw" / self.language / self.subject_name / self.generation_mode /
                                  self.compound_transformation_name / f"run-{self.run_number}" / "coverage.csv")
@@ -58,6 +61,7 @@ class RunSubjectAndProduceCoverageReport(luigi.Task, names.WithCompoundTransform
 
 class RunSubjectWithRecurrent2PathNCoverageStrategyWithOriginalGrammar(RunSubjectAndProduceCoverageReport,
                                                                        generation.WithRecurrent2PathNCoverageStrategyWithOriginalGrammar):
+    @final
     def requires(self):
         generation_task = generation.GenerateWithRecurrent2PathNCoverageStrategyWithOriginalGrammar
         dependencies = super(RunSubjectWithRecurrent2PathNCoverageStrategyWithOriginalGrammar, self).requires()
@@ -67,6 +71,7 @@ class RunSubjectWithRecurrent2PathNCoverageStrategyWithOriginalGrammar(RunSubjec
 
 class RunSubjectWithRecurrent2PathNCoverageStrategyWithChomskyGrammar(RunSubjectAndProduceCoverageReport,
                                                                       generation.WithRecurrent2PathNCoverageStrategyWithChomskyGrammar):
+    @final
     def requires(self):
         generation_task = generation.GenerateWithRecurrent2PathNCoverageStrategyWithChomskyGrammar
         dependencies = super(RunSubjectWithRecurrent2PathNCoverageStrategyWithChomskyGrammar, self).requires()
