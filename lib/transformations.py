@@ -8,19 +8,21 @@ This module contains luigi tasks corresponding to each tribble transformation mo
 import logging
 import subprocess
 from abc import ABCMeta, abstractmethod
+from typing import final
 
 import luigi
 
-from lib import subjects
-from lib import tooling
 from lib import modes
 from lib import names
+from lib import subjects
+from lib import tooling
+from lib import utils
 from lib import work_dir
 
 
 class TransformGrammarWithTribble(luigi.Task, names.WithCompoundTransformationName, modes.WithTransformationMode,
                                   metaclass=ABCMeta):
-    format: str = luigi.Parameter(description="The format specified by the input grammar.")
+    language: str = luigi.Parameter(description="The language specified by the input grammar.")
     resources = {"ram": 16}
 
     @property
@@ -28,12 +30,16 @@ class TransformGrammarWithTribble(luigi.Task, names.WithCompoundTransformationNa
     def transformation_task(self):
         raise NotImplementedError("You must specify the previous transformation!")
 
+    @final
     def requires(self):
         return tooling.BuildTribble(), self.clone(self.transformation_task)
 
+    @final
     def run(self):
         tribble_jar = self.input()[0].path
-        automaton_dir = work_dir / "tools" / "tribble-automaton-cache" / self.format
+        automaton_dir = work_dir / "tools" / "tribble-automaton-cache" / self.language
+        original_grammar_file = self.input()[1].path
+        loading_strategy = utils.choose_grammar_loading_strategy_based_on_file_extension(original_grammar_file)
         with self.output().temporary_path() as out:
             args = ["java",
                     "-Xss100m",
@@ -44,42 +50,38 @@ class TransformGrammarWithTribble(luigi.Task, names.WithCompoundTransformationNa
                     "--ignore-grammar-cache",
                     "--no-check-duplicate-alts",
                     "transform-grammar",
-                    f"--grammar-file={self.input()[1].path}",
+                    f"--grammar-file={original_grammar_file}",
                     f"--output-grammar-file={out}",
-                    f"--loading-strategy={self.choose_loading_strategy_based_on_file_extension()}",
+                    f"--loading-strategy={loading_strategy}",
                     "--storing-strategy=marshal",
-                    f"--mode={self.transformation_mode_name}",
+                    f"--mode={self.transformation_mode}",
                     ]
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
-    def choose_loading_strategy_based_on_file_extension(self):
-        grammar_file_path = self.input()[1].path
-        if grammar_file_path.endswith(".scala") or grammar_file_path.endswith(".tribble"):
-            return "parse"
-        else:
-            return "unmarshal"
-
 
 class ElementaryTransformGrammarWithTribble(TransformGrammarWithTribble, metaclass=ABCMeta):
+    @final
     def output(self):
         """If the transformation is elementary, store the intermediate grammar in a subdirectory of the target path."""
         return luigi.LocalTarget(
-            work_dir / "transformed-grammars" / self.format / self.compound_transformation_name / self.transformation_mode_name / self.format)
+            work_dir / "transformed-grammars" / self.language / self.compound_transformation_name / self.transformation_mode / self.language)
 
 
 class CompoundTransformGrammarWithTribble(TransformGrammarWithTribble, metaclass=ABCMeta):
+    @final
     def output(self):
         """If the transformation is compound, store the output grammar directly in the transformation directory."""
         return luigi.LocalTarget(
-            work_dir / "transformed-grammars" / self.format / self.compound_transformation_name / self.format)
+            work_dir / "transformed-grammars" / self.language / self.compound_transformation_name / self.language)
 
 
 class ProduceOriginalGrammar(luigi.ExternalTask):
-    format: str = luigi.Parameter(description="The format specified by the input grammar.")
+    language: str = luigi.Parameter(description="The language specified by the input grammar.")
 
+    @final
     def output(self):
-        return luigi.LocalTarget(work_dir / "grammars" / subjects[self.format]["grammar"])
+        return luigi.LocalTarget(work_dir / "grammars" / subjects[self.language]["grammar"])
 
 
 """

@@ -15,6 +15,12 @@ class WithCompoundTransformationName(metaclass=ABCMeta):
         raise NotImplementedError("You must specify the compound transformation that this belongs to!")
 
 
+class WithIdentityCompoundTransformationName(WithCompoundTransformationName):
+    @property
+    def compound_transformation_name(self) -> str:
+        return "identity"
+
+
 class WithChomskyCompoundTransformationName(WithCompoundTransformationName):
     @property
     def compound_transformation_name(self) -> str:

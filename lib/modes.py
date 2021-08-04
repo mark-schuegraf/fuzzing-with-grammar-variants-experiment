@@ -17,19 +17,19 @@ Transformation.
 class WithTransformationMode(metaclass=ABCMeta):
     @property
     @abstractmethod
-    def transformation_mode_name(self) -> str:
+    def transformation_mode(self) -> str:
         raise NotImplementedError("Must specify a transformation mode to use for grammar transformation!")
 
 
 class WithBackusNaurTransformationMode(WithTransformationMode):
     @property
-    def transformation_mode_name(self) -> str:
+    def transformation_mode(self) -> str:
         return "backus-naur-formalizer"
 
 
 class WithChomskyTransformationMode(WithTransformationMode):
     @property
-    def transformation_mode_name(self) -> str:
+    def transformation_mode(self) -> str:
         return "chomsky-normal-formalizer"
 
 

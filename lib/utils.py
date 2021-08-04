@@ -8,7 +8,7 @@ This module contains various utility mixins.
 import hashlib
 import random
 from pathlib import Path
-from typing import Final
+from typing import final, Final
 
 
 class StableRandomness(object):
@@ -18,6 +18,7 @@ class StableRandomness(object):
     MAX_RND_INT: Final[int] = 2 ** 32 - 1
 
     @staticmethod
+    @final
     def get_random(seed: int, *args: str) -> random.Random:
         """Get a random.Random instance initialized with a seed derived from the the given args."""
         # compute a stable hashcode of arguments as a string
@@ -26,10 +27,18 @@ class StableRandomness(object):
         return random.Random(seed + hash_code)
 
     @staticmethod
+    @final
     def random_int(seed: int, *args: str) -> int:
         """Get a random int that is uniquely derived from the given args."""
         rnd = StableRandomness.get_random(seed, *args)
         return rnd.randrange(StableRandomness.MAX_RND_INT)
+
+
+def choose_grammar_loading_strategy_based_on_file_extension(grammar_file_path) -> str:
+    if grammar_file_path.endswith(".scala") or grammar_file_path.endswith(".tribble"):
+        return "parse"
+    else:
+        return "unmarshal"
 
 
 def remove_tree(path: Path) -> None:
