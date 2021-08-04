@@ -22,7 +22,6 @@ from lib import work_dir
 @inherits(tooling.BuildSubject, tooling.DownloadOriginalBytecode, generation.GenerateInputsWithTribble)
 class RunSubjectAndProduceCoverageReport(luigi.Task, names.WithCompoundTransformationName, modes.WithGenerationMode,
                                          metaclass=ABCMeta):
-    format: str = luigi.Parameter(description="The format specified by the input grammar.")
     run_number: int = luigi.IntParameter(
         description="The run number corresponding to the input set used to execute the subject.")
     resources = {"ram": 1}
