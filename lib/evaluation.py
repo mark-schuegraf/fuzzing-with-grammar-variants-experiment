@@ -23,6 +23,7 @@ from lib import work_dir
 
 
 class TaskWithSafeCSVWriter(luigi.Task, metaclass=ABCMeta):
+    @final
     def _safe_write_to_csv(self, series: pd.Series):
         Path(self.output().path).parent.mkdir(parents=True, exist_ok=True)
         with self.output().temporary_path() as out:
@@ -33,6 +34,7 @@ class TaskWithSafeCSVWriter(luigi.Task, metaclass=ABCMeta):
 class ReduceIndividualCoverageReport(TaskWithSafeCSVWriter, metrics.WithEvaluationMetric,
                                      names.WithCompoundTransformationName,
                                      modes.WithGenerationMode, metaclass=ABCMeta):
+    @final
     def requires(self):
         return self.clone(self.execution_task)
 
@@ -41,15 +43,18 @@ class ReduceIndividualCoverageReport(TaskWithSafeCSVWriter, metrics.WithEvaluati
     def execution_task(self):
         raise NotImplementedError("Must specify the execution task that runs the subject to produce a coverage report!")
 
+    @final
     def run(self):
         coverages = self._read_coverages_into_series()
         value = self.evaluate_metric_on_coverage_series(coverages)
         self._safe_write_to_csv(value)
 
+    @final
     def _read_coverages_into_series(self) -> pd.Series:
         coverage_file = self.input()
         return pd.read_csv(coverage_file.path, index_col="filename")["branch"]
 
+    @final
     def output(self):
         return luigi.LocalTarget(
             work_dir / "results" / "processed" / self.language / self.subject_name / self.generation_mode /
@@ -66,6 +71,7 @@ class AggregateReducedCoverageReports(TaskWithSafeCSVWriter, utils.StableRandomn
     language_seed: int = luigi.IntParameter(
         description="The random seed from which tribble generation seeds for this language are derived.")
 
+    @final
     def requires(self):
         run_numbers = range(self.total_number_of_runs)
         run_results = [self.clone(self.reduction_task, run_number=i) for i in
@@ -77,11 +83,13 @@ class AggregateReducedCoverageReports(TaskWithSafeCSVWriter, utils.StableRandomn
     def reduction_task(self):
         raise NotImplementedError("Must specify the reduction task evaluating a metric on a single run's results!")
 
+    @final
     def run(self):
         metric_values = self._read_metric_values_from_files()
         metric_series = self._concatenate_values_into_series(metric_values)
         self._safe_write_to_csv(metric_series)
 
+    @final
     def _read_metric_values_from_files(self) -> List:
         return [pd.read_csv(file.path) for file in self.input()]
 
@@ -89,6 +97,7 @@ class AggregateReducedCoverageReports(TaskWithSafeCSVWriter, utils.StableRandomn
     def _concatenate_values_into_series(values: List) -> pd.Series:
         return pd.concat(values)
 
+    @final
     def output(self):
         return luigi.LocalTarget(
             work_dir / "results" / "processed" / self.language / self.subject_name / self.generation_mode /
