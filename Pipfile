@@ -6,9 +6,8 @@ verify_ssl = true
 [packages]
 luigi = "*"
 pandas = "*"
-# Potential data analytics and output processing for later:
-# numpy = "*"
-# scipy
+numpy = "*"
+scipy = "*"
 plotly = "*"
 notebook = "*"
 
