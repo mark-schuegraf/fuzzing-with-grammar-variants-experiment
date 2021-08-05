@@ -6,9 +6,12 @@ This module contains various utility mixins.
 """
 
 import hashlib
+import math
 import random
 from pathlib import Path
 from typing import final, Final
+
+from scipy.stats import wilcoxon
 
 
 class StableRandomness(object):
@@ -49,3 +52,8 @@ def remove_tree(path: Path) -> None:
         path.rmdir()
     else:
         path.unlink()
+
+
+def safe_wilcoxon(diffs, **kwargs):
+    """Return NaN if all diffs are zero. Otherwise carry out the wilcoxon test."""
+    return wilcoxon(diffs, **kwargs) if any(diffs) else (math.nan, math.nan)
