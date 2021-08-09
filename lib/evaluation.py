@@ -7,7 +7,7 @@ This module contains luigi tasks evaluating the coverage reports produced during
 
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import List
+from typing import List, final, Union
 
 import luigi
 import pandas as pd
@@ -24,10 +24,10 @@ from lib import work_dir
 
 class TaskWithSafeCSVWriter(luigi.Task, metaclass=ABCMeta):
     @final
-    def _safe_write_to_csv(self, series: pd.Series):
+    def _safe_write_to_csv(self, data: Union[pd.DataFrame, pd.Series]):
         Path(self.output().path).parent.mkdir(parents=True, exist_ok=True)
         with self.output().temporary_path() as out:
-            series.to_csv(out, index=False)
+            data.to_csv(out, index=False)
 
 
 @inherits(execution.RunSubjectAndProduceCoverageReport)
