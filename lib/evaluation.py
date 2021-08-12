@@ -7,6 +7,7 @@ This module contains luigi tasks evaluating the coverage reports produced during
 
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
+from statistics import mean, median
 from typing import List, final, Union
 
 import luigi
@@ -101,7 +102,67 @@ class AggregateReducedCoverageReports(TaskWithSafeCSVWriter, utils.StableRandomn
     def output(self):
         return luigi.LocalTarget(
             work_dir / "results" / "processed" / self.language / self.subject_name / self.generation_mode /
-            self.compound_transformation_name / self.metric_name / "values.csv")
+            self.compound_transformation_name / self.metric_name / "aggregated" / "values.csv")
+
+
+class ProduceEvaluationReport(TaskWithSafeCSVWriter, metrics.WithEvaluationMetric, names.WithCompoundTransformationName,
+                              modes.WithGenerationMode, metaclass=ABCMeta):
+    subject_name: str = luigi.Parameter(description="The name of the subject to run.")
+    language: str = luigi.Parameter(description="The language specified by the input grammar.")
+
+    @final
+    def requires(self):
+        return {
+            "after_transformation": self.clone(self.after_aggregation_task),
+            "before_transformation": self.clone(self.before_aggregation_task)
+        }
+
+    @property
+    @abstractmethod
+    def after_aggregation_task(self):
+        raise NotImplementedError(
+            "Must specify the aggregation task collecting the metric values of all runs after transformation!")
+
+    @property
+    @abstractmethod
+    def before_aggregation_task(self):
+        raise NotImplementedError(
+            "Must specify the aggregation task collecting the metric values of all runs before transformation!")
+
+    @final
+    def run(self):
+        inputs = self.input()
+        report = self._wilcoxon_diff_report(inputs["after_transformation"], inputs["before_transformation"])
+        self._safe_write_to_csv(report)
+
+    @final
+    def _wilcoxon_diff_report(self, after_transformation, before_transformation) -> pd.DataFrame:
+        diffs = [a - b for a, b in zip(after_transformation, before_transformation)]
+        w_two_sided, p_two_sided = utils.safe_wilcoxon(diffs, alternative="two-sided")
+        w_greater, p_greater = utils.safe_wilcoxon(diffs, alternative="greater")
+        w_less, p_less = utils.safe_wilcoxon(diffs, alternative="less")
+        return pd.DataFrame(data={
+            "language": [self.language],
+            "subject": [self.subject_name],
+            "transformation": [self.compound_transformation_name],
+            "fuzzing strategy": [self.generation_mode],
+            "mean difference": [(mean(diffs))],
+            "median difference": [(median(diffs))],
+            "min difference": [(min(diffs))],
+            "max difference": [(max(diffs))],
+            "wilcoxon (two-sided)": [w_two_sided],
+            "p-value (two-sided)": [p_two_sided],
+            "wilcoxon (greater)": [w_greater],
+            "p-value (greater)": [p_greater],
+            "wilcoxon (less)": [w_less],
+            "p-value (less)": [p_less],
+        })
+
+    @final
+    def output(self):
+        return luigi.LocalTarget(
+            work_dir / "results" / "processed" / self.language / self.subject_name / self.generation_mode /
+            self.compound_transformation_name / self.metric_name / "report" / "wilcoxon-diff-report.csv")
 
 
 """
