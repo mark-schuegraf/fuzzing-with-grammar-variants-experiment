@@ -14,7 +14,9 @@ import luigi
 from lib import tooling
 from lib import utils
 from lib import work_dir
-from lib.parametrization import *
+from lib.parametrization import base_transformers
+from lib.parametrization import follow_up_transformers
+from lib.parametrization import grammars
 
 
 class ProduceOriginalGrammar(luigi.ExternalTask):

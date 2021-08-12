@@ -17,7 +17,7 @@ from lib import tooling
 from lib import transformation
 from lib import utils
 from lib import work_dir
-from lib.parametrization import *
+from lib.parametrization import suffixes
 
 
 @inherits(transformation.TransformGrammar)
