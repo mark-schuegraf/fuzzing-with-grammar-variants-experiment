@@ -28,8 +28,8 @@ class ProduceOriginalGrammar(luigi.ExternalTask):
 
 
 class TransformGrammar(luigi.Task):
-    transformation_mode: str = luigi.Parameter(description="The tribble transformation mode to use.")
     language: str = luigi.Parameter(description="The language specified by the input grammar.")
+    transformation_mode: str = luigi.Parameter(description="The tribble transformation mode to use.")
     resources = {"ram": 16}
 
     @final
