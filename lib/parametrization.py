@@ -12,6 +12,14 @@ languages = [
     "json"
 ]
 
+suffixes = {
+    "json": ".json"
+}
+
+grammars = {
+    "json": "json/json-org.scala"
+}
+
 subjects = {
     "json": {"argo": "argo"}
 }
@@ -21,14 +29,12 @@ fuzzing_strategies = [
 ]
 
 """Contains transformers with no prerequisite transformations."""
-base_transformers = ["identity",
-                     "backus-naur-formalizer"]
+base_transformers = [
+    "identity",
+    "backus-naur-formalizer"
+]
 
 """Maps transformers with prerequisite transformations to their required base transformers."""
 follow_up_transformers = {
     "chomsky-normal-formalizer": "backus-naur-formalizer"
-}
-
-grammars = {
-    "json": "json/json-org.scala"
 }
