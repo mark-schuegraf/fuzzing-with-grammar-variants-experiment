@@ -9,11 +9,16 @@ import logging
 import sys
 
 import luigi
+from luigi.util import requires
+
+from lib import transformation
 
 
+@requires(transformation.TransformGrammar)
 class Experiment(luigi.WrapperTask):
     """Attempts to find a relationship between grammar transformations and coverage metrics."""
-    pass
+    transformation_mode: str = luigi.Parameter(description="The tribble transformation mode to use.")
+    language: str = luigi.Parameter(description="The language specified by the input grammar.")
 
 
 if __name__ == '__main__':
