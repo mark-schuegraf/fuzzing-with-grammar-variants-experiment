@@ -72,5 +72,4 @@ class TransformGrammar(luigi.Task):
 
     @final
     def output(self):
-        return luigi.LocalTarget(
-            work_dir / "transformed-grammars" / self.transformation_mode / self.language)
+        return luigi.LocalTarget(work_dir / "transformed-grammars" / self.language / self.transformation_mode)

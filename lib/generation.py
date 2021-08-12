@@ -71,4 +71,4 @@ class GenerateInputs(luigi.Task, utils.StableRandomness):
     @final
     def output(self):
         return luigi.LocalTarget(
-            work_dir / "inputs" / self.generation_mode / self.transformation_mode / self.language / f"run-{self.run_number}")
+            work_dir / "inputs" / self.language / self.transformation_mode / self.generation_mode / f"run-{self.run_number}")
