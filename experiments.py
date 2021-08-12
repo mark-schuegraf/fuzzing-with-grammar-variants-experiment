@@ -11,10 +11,10 @@ import sys
 import luigi
 from luigi.util import requires
 
-from lib import generation
+from lib import execution
 
 
-@requires(generation.GenerateInputs)
+@requires(execution.RunSubjectAndProduceCoverageReport)
 class Experiment(luigi.WrapperTask):
     """Attempts to find a relationship between grammar transformations and coverage metrics."""
     transformation_mode: str = luigi.Parameter(description="The tribble transformation mode to use.")
@@ -22,7 +22,7 @@ class Experiment(luigi.WrapperTask):
     generation_mode: str = luigi.Parameter(description="The tribble generation mode to use.")
     run_number: int = luigi.IntParameter(description="The run number of the produced input set.")
     language_seed: int = luigi.IntParameter(description="The seed from which seeds for this language are derived.")
-    resources = {"ram": 4}
+    subject_name: str = luigi.Parameter(description="The name of the subject to run.")
 
 
 if __name__ == '__main__':
