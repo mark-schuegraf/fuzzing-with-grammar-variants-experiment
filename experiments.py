@@ -21,7 +21,6 @@ class Experiment(luigi.WrapperTask):
     transformation_mode: str = luigi.Parameter(description="The tribble transformation mode to use.")
     generation_mode: str = luigi.Parameter(description="The tribble generation mode to use.")
     subject_name: str = luigi.Parameter(description="The name of the subject to run.")
-    run_number: int = luigi.IntParameter(description="The run number of the produced input set.")
     language_seed: int = luigi.IntParameter(description="The seed from which seeds for this language are derived.")
     total_number_of_runs: int = luigi.IntParameter(description="The number of runs to conduct per configuration.")
 
