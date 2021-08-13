@@ -11,18 +11,12 @@ import sys
 import luigi
 from luigi.util import requires
 
-from lib import result_reporting
+from lib import task_dispatch
 
 
-@requires(result_reporting.ProduceCoverageReport, result_reporting.ProduceCoverageGrowthRateReport)
+@requires(task_dispatch.DispatchLanguages)
 class Experiment(luigi.WrapperTask):
     """Attempts to find a relationship between grammar transformations and coverage metrics."""
-    language: str = luigi.Parameter(description="The language specified by the input grammar.")
-    transformation_mode: str = luigi.Parameter(description="The tribble transformation mode to use.")
-    generation_mode: str = luigi.Parameter(description="The tribble generation mode to use.")
-    subject_name: str = luigi.Parameter(description="The name of the subject to run.")
-    language_seed: int = luigi.IntParameter(description="The seed from which seeds for this language are derived.")
-    total_number_of_runs: int = luigi.IntParameter(description="The number of runs to conduct per configuration.")
 
 
 if __name__ == '__main__':
