@@ -11,10 +11,10 @@ import sys
 import luigi
 from luigi.util import requires
 
-from lib import evaluation
+from lib import result_reporting
 
 
-@requires(evaluation.EvaluateCoverage, evaluation.EvaluateCoverageGrowthRate)
+@requires(result_reporting.ProduceCoverageReport, result_reporting.ProduceCoverageGrowthRateReport)
 class Experiment(luigi.WrapperTask):
     """Attempts to find a relationship between grammar transformations and coverage metrics."""
     language: str = luigi.Parameter(description="The language specified by the input grammar.")
