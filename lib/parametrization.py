@@ -10,41 +10,41 @@ from lib import config
 # TODO populate these collections
 languages = [
     "json",
-    "url"
+    "url",
 ]
 
 suffixes = {
     "json": ".json",
-    "url": ".txt"
+    "url": ".txt",
 }
 
 grammars = {
     "json": "json/json-org.scala",
-    "url": "url/url-rfc.scala"
+    "url": "url/url-rfc.scala",
 }
 
 subjects = {
     "json": {
         "argo": "argo",
-        "json-simple": "org.json.simple"
+        "json-simple": "org.json.simple",
     },
     "url": {
-        "jurl": "com.anthonynsimon.url"
+        "jurl": "com.anthonynsimon.url",
     }
 }
 
 fuzzing_strategies = [
     f"200-random-{config.number_of_files_to_generate}",
-    f"recurrent-2-path-{config.number_of_files_to_generate}"
+    f"recurrent-2-path-{config.number_of_files_to_generate}",
 ]
 
 """Contains transformers with no prerequisite transformations."""
 base_transformers = [
     "identity",
-    "backus-naur-formalizer"
+    "backus-naur-formalizer",
 ]
 
 """Maps transformers with prerequisite transformations to their required base transformers."""
 follow_up_transformers = {
-    "chomsky-normal-formalizer": "backus-naur-formalizer"
+    "chomsky-normal-formalizer": "backus-naur-formalizer",
 }
