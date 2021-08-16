@@ -30,7 +30,7 @@ class ProduceResultReport(utils.TaskWithTemporaryPathCSVWriter, metaclass=ABCMet
         w_greater, p_greater = utils.safe_wilcoxon(diffs, alternative="greater")
         return pd.DataFrame(data={
             "language": [self.language],
-            "transformer": [self.transformation_mode],
+            "transformation": [self.transformation_name],
             "fuzzing strategy": [self.generation_mode],
             "subject": [self.subject_name],
             "metric": metric_name,
@@ -50,7 +50,8 @@ class ProduceCoverageReport(ProduceResultReport):
     def requires(self):
         return {
             "after_transformation": self.clone(evaluation.EvaluateCoverage),
-            "before_transformation": self.clone(evaluation.EvaluateCoverage, transformation_mode="identity")
+            "before_transformation": self.clone(evaluation.EvaluateCoverage, transformation_name="identity",
+                                                transformation_mode="")
         }
 
     @final
@@ -63,7 +64,7 @@ class ProduceCoverageReport(ProduceResultReport):
     @final
     def output(self):
         return luigi.LocalTarget(
-            work_dir / "results" / self.language / self.transformation_mode / self.generation_mode / self.subject_name
+            work_dir / "results" / self.language / self.transformation_name / self.generation_mode / self.subject_name
             / "coverage" / "coverage-diff-report.csv")
 
 
@@ -72,7 +73,8 @@ class ProduceCoverageGrowthRateReport(ProduceResultReport):
     def requires(self):
         return {
             "after_transformation": self.clone(evaluation.EvaluateCoverageGrowthRate),
-            "before_transformation": self.clone(evaluation.EvaluateCoverageGrowthRate, transformation_mode="identity")
+            "before_transformation": self.clone(evaluation.EvaluateCoverageGrowthRate, transformation_name="identity",
+                                                transformation_mode="")
         }
 
     @final
@@ -85,5 +87,5 @@ class ProduceCoverageGrowthRateReport(ProduceResultReport):
     @final
     def output(self):
         return luigi.LocalTarget(
-            work_dir / "results" / self.language / self.transformation_mode / self.generation_mode / self.subject_name
+            work_dir / "results" / self.language / self.transformation_name / self.generation_mode / self.subject_name
             / "coverage-growth-rate" / "coverage-growth-rate-diff-report.csv")

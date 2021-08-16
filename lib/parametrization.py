@@ -5,6 +5,8 @@
 This module contains possible parameter values to experiment with.
 """
 
+from typing import Dict, Optional
+
 from lib import config
 
 # TODO populate these collections
@@ -38,13 +40,14 @@ fuzzing_strategies = [
     f"recurrent-2-path-{config.number_of_files_to_generate}",
 ]
 
-"""Contains transformers with no prerequisite transformations."""
-base_transformers = [
-    "identity",
-    "backus-naur-formalizer",
-]
+"""Maps transformation names to the transformer that conducts them."""
+transformations = {
+    "backus-naur-form": "backus-naur-formalizer",
+    "chomsky-normal-form": "chomsky-normal-formalizer",
+}
 
-"""Maps transformers with prerequisite transformations to their required base transformers."""
-follow_up_transformers = {
-    "chomsky-normal-formalizer": "backus-naur-formalizer",
+"""Maps transformers to their prerequisite transformers or None if they have no preconditions."""
+transformers: Dict[str, Optional[str]] = {
+    "backus-naur-formalizer": None,
+    "chomsky-normal-formalizer": "backus-naur-formalizer"
 }

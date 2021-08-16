@@ -20,7 +20,7 @@ from lib import utils
 from lib import work_dir
 
 
-@inherits(transformation.TransformGrammar)
+@inherits(transformation.TransformOrFetchGrammar)
 class GenerateInputs(luigi.Task, utils.StableRandomness):
     generation_mode: str = luigi.Parameter(description="The tribble generation mode to use.")
     run_number: int = luigi.IntParameter(description="The run number of the produced input set.")
@@ -31,7 +31,7 @@ class GenerateInputs(luigi.Task, utils.StableRandomness):
     def requires(self):
         return {
             "tribble_jar": tooling.BuildTribble(),
-            "grammar_file": self.clone(transformation.TransformGrammar)
+            "grammar_file": self.clone(transformation.TransformOrFetchGrammar)
         }
 
     @final
@@ -71,4 +71,4 @@ class GenerateInputs(luigi.Task, utils.StableRandomness):
     @final
     def output(self):
         return luigi.LocalTarget(
-            work_dir / "inputs" / self.language / self.transformation_mode / self.generation_mode / f"run-{self.run_number}")
+            work_dir / "inputs" / self.language / self.transformation_name / self.generation_mode / f"run-{self.run_number}")

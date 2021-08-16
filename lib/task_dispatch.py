@@ -21,7 +21,7 @@ class DispatchLanguages(luigi.WrapperTask, utils.StableRandomness):
 
     @final
     def requires(self):
-        return [self.clone(DispatchTransformers, language=language,
+        return [self.clone(DispatchTransformations, language=language,
                            language_seed=self._derive_language_seed_from_random_seed(language))
                 for language in par.languages]
 
@@ -30,19 +30,20 @@ class DispatchLanguages(luigi.WrapperTask, utils.StableRandomness):
         return self.random_int(self.random_seed, language)
 
 
-class DispatchTransformers(luigi.WrapperTask):
+class DispatchTransformations(luigi.WrapperTask):
     language: str = luigi.Parameter(description="The language specified by the input grammar.")
     language_seed: int = luigi.IntParameter(description="The seed from which seeds for this language are derived.")
     total_number_of_runs: int = luigi.IntParameter(description="The number of runs to conduct per configuration.")
 
     @final
     def requires(self):
-        modes = [t for t in par.base_transformers if t != "identity"] + par.follow_up_transformers.keys()
-        return [self.clone(DispatchFuzzingStrategies, transformation_mode=mode) for mode in modes]
+        return [self.clone(DispatchFuzzingStrategies, transformation_name=name, transformation_mode=mode)
+                for name, mode in par.transformations.items()]
 
 
-@inherits(DispatchTransformers)
+@inherits(DispatchTransformations)
 class DispatchFuzzingStrategies(luigi.WrapperTask):
+    transformation_name: str = luigi.Parameter(description="The transformation to conduct.")
     transformation_mode: str = luigi.Parameter(description="The tribble transformation mode to use.")
 
     @final

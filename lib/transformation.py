@@ -7,7 +7,7 @@ This module contains luigi tasks that transform the input grammar using tribble.
 
 import logging
 import subprocess
-from typing import final
+from typing import final, Optional
 
 import luigi
 
@@ -27,6 +27,7 @@ class ProduceOriginalGrammar(luigi.ExternalTask):
 
 class TransformGrammar(luigi.Task):
     language: str = luigi.Parameter(description="The language specified by the input grammar.")
+    transformation_name: str = luigi.Parameter(description="The transformation to conduct.")
     transformation_mode: str = luigi.Parameter(description="The tribble transformation mode to use.")
     resources = {"ram": 16}
 
@@ -39,11 +40,14 @@ class TransformGrammar(luigi.Task):
 
     @final
     def _choose_transformation_task(self):
-        if self.transformation_mode in par.base_transformers:
-            return self.clone(ProduceOriginalGrammar)
+        if self._prerequisite_mode:
+            return self.clone(TransformGrammar, transformation_mode=self._prerequisite_mode)
         else:
-            prerequisite_mode = par.follow_up_transformers[self.transformation_mode]
-            return self.clone(TransformGrammar, transformation_mode=prerequisite_mode)
+            return self.clone(ProduceOriginalGrammar)
+
+    @property
+    def _prerequisite_mode(self) -> Optional[str]:
+        return par.transformers[self.transformation_mode]
 
     @final
     def run(self):
@@ -72,4 +76,21 @@ class TransformGrammar(luigi.Task):
 
     @final
     def output(self):
-        return luigi.LocalTarget(work_dir / "transformed-grammars" / self.language / self.transformation_mode)
+        rel_out_dir = "" if self._prerequisite_mode else self.transformation_mode
+        return luigi.LocalTarget(
+            work_dir / "transformed-grammars" / self.language / self.transformation_name / rel_out_dir / self.language)
+
+
+class TransformOrFetchGrammar(luigi.Task):
+    language: str = luigi.Parameter(description="The language specified by the input grammar.")
+    transformation_name: str = luigi.Parameter(description="The transformation to conduct.")
+    transformation_mode: str = luigi.OptionalParameter(description="The tribble transformation mode to use.")
+
+    def requires(self):
+        if self.transformation_mode:
+            return self.clone(TransformGrammar)
+        else:
+            return self.clone(ProduceOriginalGrammar)
+
+    def output(self):
+        return self.input()
