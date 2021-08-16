@@ -21,7 +21,7 @@ from lib import work_dir
 
 
 @inherits(evaluation.EvaluateCoverageReports)
-class ProduceResultReport(utils.TaskWithSafeCSVWriter, metaclass=ABCMeta):
+class ProduceResultReport(utils.TaskWithTemporaryPathCSVWriter, metaclass=ABCMeta):
     @final
     def _wilcoxon_diff_report(self, metric_name: str, after_transformation: pd.Series,
                               before_transformation: pd.Series) -> pd.DataFrame:
@@ -61,7 +61,7 @@ class ProduceCoverageReport(ProduceResultReport):
         coverages_after = pd.read_csv(self.input()["after_transformation"].path).squeeze()
         coverages_before = pd.read_csv(self.input()["before_transformation"].path).squeeze()
         report = self._wilcoxon_diff_report("coverage", coverages_after, coverages_before)
-        self._safe_write_to_csv(report)
+        self._pd_write_to_csv_using_temporary_path(report)
 
     @final
     def output(self):
@@ -83,7 +83,7 @@ class ProduceCoverageGrowthRateReport(ProduceResultReport):
         growths_after = pd.read_csv(self.input()["after_transformation"].path).squeeze()
         growths_before = pd.read_csv(self.input()["before_transformation"].path).squeeze()
         report = self._wilcoxon_diff_report("coverage-growth-rate", growths_after, growths_before)
-        self._safe_write_to_csv(report)
+        self._pd_write_to_csv_using_temporary_path(report)
 
     @final
     def output(self):

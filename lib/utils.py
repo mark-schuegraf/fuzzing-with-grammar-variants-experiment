@@ -62,9 +62,9 @@ class StableRandomness(object):
         return rnd.randrange(StableRandomness.MAX_RND_INT)
 
 
-class TaskWithSafeCSVWriter(luigi.Task, metaclass=ABCMeta):
+class TaskWithTemporaryPathCSVWriter(luigi.Task, metaclass=ABCMeta):
     @final
-    def _safe_write_to_csv(self, data: Union[pd.DataFrame, pd.Series]):
+    def _pd_write_to_csv_using_temporary_path(self, data: Union[pd.DataFrame, pd.Series]):
         Path(self.output().path).parent.mkdir(parents=True, exist_ok=True)
         with self.output().temporary_path() as out:
             data.to_csv(out, index=False)

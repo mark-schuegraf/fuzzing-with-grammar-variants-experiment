@@ -16,7 +16,7 @@ from lib import utils
 from lib import work_dir
 
 
-class EvaluateCoverageReports(utils.TaskWithSafeCSVWriter, metaclass=ABCMeta):
+class EvaluateCoverageReports(utils.TaskWithTemporaryPathCSVWriter, metaclass=ABCMeta):
     language: str = luigi.Parameter(description="The language specified by the input grammar.")
     transformation_mode: str = luigi.Parameter(description="The tribble transformation mode to use.")
     generation_mode: str = luigi.Parameter(description="The tribble generation mode to use.")
@@ -35,7 +35,7 @@ class EvaluateCoverageReports(utils.TaskWithSafeCSVWriter, metaclass=ABCMeta):
                        self.input()]
         metrics = [self._evaluate_individual_run(run_result) for run_result in run_results]
         aggregate = pd.concat(metrics)
-        self._safe_write_to_csv(aggregate)
+        self._pd_write_to_csv_using_temporary_path(aggregate)
 
     @abstractmethod
     def _evaluate_individual_run(self, run_result: pd.Series) -> pd.Series:
