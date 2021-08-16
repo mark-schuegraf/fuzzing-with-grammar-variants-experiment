@@ -9,22 +9,33 @@ from lib import config
 
 # TODO populate these collections
 languages = [
-    "json"
+    "json",
+    "url"
 ]
 
 suffixes = {
-    "json": ".json"
+    "json": ".json",
+    "url": ".txt"
 }
 
 grammars = {
-    "json": "json/json-org.scala"
+    "json": "json/json-org.scala",
+    "url": "url/url-rfc.scala"
 }
 
 subjects = {
-    "json": {"argo": "argo"}
+    "json": {
+        "argo": "argo",
+        "json-simple": "org.json.simple"
+    },
+    "url": {
+        "jurl": "com.anthonynsimon.url"
+    }
 }
 
 fuzzing_strategies = [
+    # TODO is approximate tree size s=40 appropriate here?
+    f"40-random-{config.number_of_files_to_generate}",
     f"recurrent-2-path-{config.number_of_files_to_generate}"
 ]
 
