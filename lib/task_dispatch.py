@@ -34,10 +34,10 @@ class DispatchLanguages(luigi.WrapperTask, utils.StableRandomness):
         return self.random_int(self.random_seed, language)
 
 
-@inherits(DispatchLanguages)
 class DispatchTransformers(luigi.WrapperTask):
     language: str = luigi.Parameter(description="The language specified by the input grammar.")
     language_seed: int = luigi.IntParameter(description="The seed from which seeds for this language are derived.")
+    total_number_of_runs: int = luigi.IntParameter(description="The number of runs to conduct per configuration.")
 
     @final
     def requires(self):
