@@ -28,7 +28,6 @@ class ProduceResultReport(utils.TaskWithTemporaryPathCSVWriter, metaclass=ABCMet
         diffs = after_transformation - before_transformation
         w_two_sided, p_two_sided = utils.safe_wilcoxon(diffs, alternative="two-sided")
         w_greater, p_greater = utils.safe_wilcoxon(diffs, alternative="greater")
-        w_less, p_less = utils.safe_wilcoxon(diffs, alternative="less")
         return pd.DataFrame(data={
             "language": [self.language],
             "transformer": [self.transformation_mode],
@@ -43,8 +42,6 @@ class ProduceResultReport(utils.TaskWithTemporaryPathCSVWriter, metaclass=ABCMet
             "p-value (two-sided)": [p_two_sided],
             "wilcoxon (greater)": [w_greater],
             "p-value (greater)": [p_greater],
-            "wilcoxon (less)": [w_less],
-            "p-value (less)": [p_less],
         })
 
 
