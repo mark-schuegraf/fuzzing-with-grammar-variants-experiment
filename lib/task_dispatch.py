@@ -41,7 +41,7 @@ class DispatchTransformers(luigi.WrapperTask):
 
     @final
     def requires(self):
-        modes = base_transformers + [*follow_up_transformers]
+        modes = [t for t in base_transformers if t != "identity"] + [*follow_up_transformers]
         return [self.clone(DispatchFuzzingStrategies, transformation_mode=mode) for mode in modes]
 
 
