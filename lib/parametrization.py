@@ -34,8 +34,7 @@ subjects = {
 }
 
 fuzzing_strategies = [
-    # TODO is approximate tree size s=40 appropriate here?
-    f"40-random-{config.number_of_files_to_generate}",
+    f"200-random-{config.number_of_files_to_generate}",
     f"recurrent-2-path-{config.number_of_files_to_generate}"
 ]
 
