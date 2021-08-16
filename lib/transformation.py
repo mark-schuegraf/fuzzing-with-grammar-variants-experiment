@@ -11,12 +11,10 @@ from typing import final
 
 import luigi
 
+from lib import parametrization as par
 from lib import tooling
 from lib import utils
 from lib import work_dir
-from lib.parametrization import base_transformers
-from lib.parametrization import follow_up_transformers
-from lib.parametrization import grammars
 
 
 class ProduceOriginalGrammar(luigi.ExternalTask):
@@ -24,7 +22,7 @@ class ProduceOriginalGrammar(luigi.ExternalTask):
 
     @final
     def output(self):
-        return luigi.LocalTarget(work_dir / "grammars" / grammars[self.language])
+        return luigi.LocalTarget(work_dir / "grammars" / par.grammars[self.language])
 
 
 class TransformGrammar(luigi.Task):
@@ -41,10 +39,10 @@ class TransformGrammar(luigi.Task):
 
     @final
     def _choose_transformation_task(self):
-        if self.transformation_mode in base_transformers:
+        if self.transformation_mode in par.base_transformers:
             return self.clone(ProduceOriginalGrammar)
         else:
-            prerequisite_mode = follow_up_transformers[self.transformation_mode]
+            prerequisite_mode = par.follow_up_transformers[self.transformation_mode]
             return self.clone(TransformGrammar, transformation_mode=prerequisite_mode)
 
     @final

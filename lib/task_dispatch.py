@@ -9,13 +9,9 @@ from typing import final
 import luigi
 from luigi.util import inherits
 
+from lib import parametrization as par
 from lib import result_reporting
 from lib import utils
-from lib.parametrization import base_transformers
-from lib.parametrization import follow_up_transformers
-from lib.parametrization import fuzzing_strategies
-from lib.parametrization import languages
-from lib.parametrization import subjects
 
 
 class DispatchLanguages(luigi.WrapperTask, utils.StableRandomness):
@@ -27,7 +23,7 @@ class DispatchLanguages(luigi.WrapperTask, utils.StableRandomness):
     def requires(self):
         return [self.clone(DispatchTransformers, language=language,
                            language_seed=self._derive_language_seed_from_random_seed(language))
-                for language in languages]
+                for language in par.languages]
 
     @final
     def _derive_language_seed_from_random_seed(self, language):
@@ -41,7 +37,7 @@ class DispatchTransformers(luigi.WrapperTask):
 
     @final
     def requires(self):
-        modes = [t for t in base_transformers if t != "identity"] + follow_up_transformers.keys()
+        modes = [t for t in par.base_transformers if t != "identity"] + par.follow_up_transformers.keys()
         return [self.clone(DispatchFuzzingStrategies, transformation_mode=mode) for mode in modes]
 
 
@@ -51,7 +47,7 @@ class DispatchFuzzingStrategies(luigi.WrapperTask):
 
     @final
     def requires(self):
-        return [self.clone(DispatchCompatibleSubjects, generation_mode=strategy) for strategy in fuzzing_strategies]
+        return [self.clone(DispatchCompatibleSubjects, generation_mode=strategy) for strategy in par.fuzzing_strategies]
 
 
 @inherits(DispatchFuzzingStrategies)
@@ -60,7 +56,7 @@ class DispatchCompatibleSubjects(luigi.WrapperTask):
 
     @final
     def requires(self):
-        return [self.clone(DispatchMetrics, subject_name=subject) for subject in subjects[self.language]]
+        return [self.clone(DispatchMetrics, subject_name=subject) for subject in par.subjects[self.language]]
 
 
 @inherits(DispatchCompatibleSubjects)

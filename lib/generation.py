@@ -13,11 +13,11 @@ from typing import final
 import luigi
 from luigi.util import inherits
 
+from lib import parametrization as par
 from lib import tooling
 from lib import transformation
 from lib import utils
 from lib import work_dir
-from lib.parametrization import suffixes
 
 
 @inherits(transformation.TransformGrammar)
@@ -52,7 +52,7 @@ class GenerateInputs(luigi.Task, utils.StableRandomness):
                     "--ignore-grammar-cache",
                     "--no-check-duplicate-alts",
                     "generate",
-                    f'--suffix={suffixes[self.language]}',
+                    f'--suffix={par.suffixes[self.language]}',
                     f"--out-dir={out}",
                     f"--grammar-file={grammar_file}",
                     f"--loading-strategy={loading_strategy}",
