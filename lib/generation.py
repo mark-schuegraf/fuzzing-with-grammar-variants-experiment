@@ -8,7 +8,6 @@ This module contains a luigi task that generates inputs using the tribble fuzzer
 import logging
 import subprocess
 from pathlib import Path
-from typing import final
 
 import luigi
 from luigi.util import inherits
@@ -27,14 +26,12 @@ class GenerateInputs(luigi.Task, utils.StableRandomness):
     language_seed: int = luigi.IntParameter(description="The seed from which seeds for this language are derived.")
     resources = {"ram": 4}
 
-    @final
     def requires(self):
         return {
             "tribble_jar": tooling.BuildTribble(),
             "grammar_file": self.clone(transformation.TransformOrFetchGrammar)
         }
 
-    @final
     def run(self):
         tribble_jar = self.input()["tribble_jar"].path
         random_seed = self._derive_tribble_generation_seed_from_language_seed()
@@ -61,14 +58,12 @@ class GenerateInputs(luigi.Task, utils.StableRandomness):
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
-    @final
     def _derive_tribble_generation_seed_from_language_seed(self):
         # also make the seed depend on the output path starting from work_dir
         rel_output_path = Path(self.output().path).relative_to(work_dir)
         return self.random_int(self.language_seed, self.generation_mode, self.language, str(self.run_number),
                                *rel_output_path.parts)
 
-    @final
     def output(self):
         return luigi.LocalTarget(
             work_dir / "inputs" / self.language / self.transformation_name / self.generation_mode / f"run-{self.run_number}")

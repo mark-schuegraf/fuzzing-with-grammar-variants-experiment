@@ -44,11 +44,9 @@ class EvaluateCoverageReports(utils.TaskWithTemporaryPathCSVWriter, metaclass=AB
 
 
 class EvaluateCoverage(EvaluateCoverageReports):
-    @final
     def _evaluate_individual_run(self, run_result: pd.Series) -> pd.Series:
         return run_result.tail(1).rename("coverage")
 
-    @final
     def output(self):
         return luigi.LocalTarget(
             work_dir / "metrics" / self.language / self.transformation_name / self.generation_mode / self.subject_name
@@ -56,11 +54,9 @@ class EvaluateCoverage(EvaluateCoverageReports):
 
 
 class EvaluateCoverageGrowthRate(EvaluateCoverageReports):
-    @final
     def _evaluate_individual_run(self, run_result: pd.Series) -> pd.Series:
         return pd.Series(data=run_result.sum(), name="coverage-growth-rate")
 
-    @final
     def output(self):
         return luigi.LocalTarget(
             work_dir / "metrics" / self.language / self.transformation_name / self.generation_mode / self.subject_name

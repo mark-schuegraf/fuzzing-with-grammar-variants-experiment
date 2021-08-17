@@ -46,7 +46,6 @@ class ProduceResultReport(utils.TaskWithTemporaryPathCSVWriter, metaclass=ABCMet
 
 
 class ProduceCoverageReport(ProduceResultReport):
-    @final
     def requires(self):
         return {
             "after_transformation": self.clone(evaluation.EvaluateCoverage),
@@ -54,14 +53,12 @@ class ProduceCoverageReport(ProduceResultReport):
                                                 transformation_mode="")
         }
 
-    @final
     def run(self):
         coverages_after = pd.read_csv(self.input()["after_transformation"].path).squeeze()
         coverages_before = pd.read_csv(self.input()["before_transformation"].path).squeeze()
         report = self._wilcoxon_diff_report("coverage", coverages_after, coverages_before)
         self._pd_write_to_csv_using_temporary_path(report)
 
-    @final
     def output(self):
         return luigi.LocalTarget(
             work_dir / "results" / self.language / self.transformation_name / self.generation_mode / self.subject_name
@@ -69,7 +66,6 @@ class ProduceCoverageReport(ProduceResultReport):
 
 
 class ProduceCoverageGrowthRateReport(ProduceResultReport):
-    @final
     def requires(self):
         return {
             "after_transformation": self.clone(evaluation.EvaluateCoverageGrowthRate),
@@ -77,14 +73,12 @@ class ProduceCoverageGrowthRateReport(ProduceResultReport):
                                                 transformation_mode="")
         }
 
-    @final
     def run(self):
         growths_after = pd.read_csv(self.input()["after_transformation"].path).squeeze()
         growths_before = pd.read_csv(self.input()["before_transformation"].path).squeeze()
         report = self._wilcoxon_diff_report("coverage-growth-rate", growths_after, growths_before)
         self._pd_write_to_csv_using_temporary_path(report)
 
-    @final
     def output(self):
         return luigi.LocalTarget(
             work_dir / "results" / self.language / self.transformation_name / self.generation_mode / self.subject_name

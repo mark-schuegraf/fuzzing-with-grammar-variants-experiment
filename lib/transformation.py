@@ -7,7 +7,7 @@ This module contains luigi tasks that transform the input grammar using tribble.
 
 import logging
 import subprocess
-from typing import final, Optional
+from typing import Optional
 
 import luigi
 
@@ -20,7 +20,6 @@ from lib import work_dir
 class ProduceOriginalGrammar(luigi.ExternalTask):
     language: str = luigi.Parameter(description="The language specified by the input grammar.")
 
-    @final
     def output(self):
         return luigi.LocalTarget(work_dir / "grammars" / par.grammars[self.language])
 
@@ -31,14 +30,12 @@ class TransformGrammar(luigi.Task):
     transformation_mode: str = luigi.Parameter(description="The tribble transformation mode to use.")
     resources = {"ram": 16}
 
-    @final
     def requires(self):
         return {
             "tribble_jar": tooling.BuildTribble(),
             "grammar_file": self._choose_transformation_task()
         }
 
-    @final
     def _choose_transformation_task(self):
         if self._prerequisite_mode:
             return self.clone(TransformGrammar, transformation_mode=self._prerequisite_mode)
@@ -49,7 +46,6 @@ class TransformGrammar(luigi.Task):
     def _prerequisite_mode(self) -> Optional[str]:
         return par.transformers[self.transformation_mode]
 
-    @final
     def run(self):
         tribble_jar = self.input()["tribble_jar"].path
         automaton_dir = work_dir / "tools" / "tribble-automaton-cache" / self.language
@@ -74,7 +70,6 @@ class TransformGrammar(luigi.Task):
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
-    @final
     def output(self):
         is_last_step = par.transformations[self.transformation_name] == self.transformation_mode
         rel_out_dir = "" if is_last_step else self.transformation_mode

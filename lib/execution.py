@@ -7,7 +7,6 @@ This module contains a luigi task executing a subject with a generated input set
 
 import logging
 import subprocess
-from typing import final
 
 import luigi
 from luigi.util import inherits
@@ -29,7 +28,6 @@ class RunSubjectAndProduceCoverageReport(luigi.Task):
             "inputs": self.clone(generation.GenerateInputs)
         }
 
-    @final
     def run(self):
         subject_jar = self.input()["subject_jar"].path
         original_jar = self.input()["original_jar"].path
@@ -49,7 +47,6 @@ class RunSubjectAndProduceCoverageReport(luigi.Task):
         logging.info("Launching %s", " ".join(args))
         subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
-    @final
     def output(self):
         return luigi.LocalTarget(
             work_dir / "coverage-reports" / self.language / self.transformation_mode / self.generation_mode
