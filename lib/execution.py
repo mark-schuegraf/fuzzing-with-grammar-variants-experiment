@@ -49,5 +49,5 @@ class RunSubjectAndProduceCoverageReport(luigi.Task):
 
     def output(self):
         return luigi.LocalTarget(
-            work_dir / "coverage-reports" / self.language / self.transformation_mode / self.generation_mode
+            work_dir / "coverage-reports" / self.language / self.transformation_name / self.generation_mode
             / self.subject_name / f"run-{self.run_number}" / "coverage.csv")
