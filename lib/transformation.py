@@ -76,7 +76,8 @@ class TransformGrammar(luigi.Task):
 
     @final
     def output(self):
-        rel_out_dir = "" if self._prerequisite_mode else self.transformation_mode
+        is_last_step = par.transformations[self.transformation_name] == self.transformation_mode
+        rel_out_dir = "" if is_last_step else self.transformation_mode
         return luigi.LocalTarget(
             work_dir / "transformed-grammars" / self.language / self.transformation_name / rel_out_dir / self.language)
 
