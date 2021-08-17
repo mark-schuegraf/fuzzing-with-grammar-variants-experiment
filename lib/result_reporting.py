@@ -54,8 +54,8 @@ class ProduceCoverageReport(ProduceResultReport):
         }
 
     def run(self):
-        coverages_after = pd.read_csv(self.input()["after_transformation"].path).squeeze()
-        coverages_before = pd.read_csv(self.input()["before_transformation"].path).squeeze()
+        coverages_after = pd.read_csv(self.input()["after_transformation"].path)["coverage"]
+        coverages_before = pd.read_csv(self.input()["before_transformation"].path)["coverage"]
         report = self._wilcoxon_diff_report("coverage", coverages_after, coverages_before)
         self._pd_write_to_csv_using_temporary_path(report)
 
@@ -74,8 +74,8 @@ class ProduceCoverageGrowthRateReport(ProduceResultReport):
         }
 
     def run(self):
-        growths_after = pd.read_csv(self.input()["after_transformation"].path).squeeze()
-        growths_before = pd.read_csv(self.input()["before_transformation"].path).squeeze()
+        growths_after = pd.read_csv(self.input()["after_transformation"].path)["coverage-growth-rate"]
+        growths_before = pd.read_csv(self.input()["before_transformation"].path)["coverage-growth-rate"]
         report = self._wilcoxon_diff_report("coverage-growth-rate", growths_after, growths_before)
         self._pd_write_to_csv_using_temporary_path(report)
 
