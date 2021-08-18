@@ -46,7 +46,6 @@ class StableRandomness(object):
     MAX_RND_INT: Final[int] = 2 ** 32 - 1
 
     @staticmethod
-    @final
     def get_random(seed: int, *args: str) -> random.Random:
         """Get a random.Random instance initialized with a seed derived from the the given args."""
         # compute a stable hashcode of arguments as a string
@@ -55,7 +54,6 @@ class StableRandomness(object):
         return random.Random(seed + hash_code)
 
     @staticmethod
-    @final
     def random_int(seed: int, *args: str) -> int:
         """Get a random int that is uniquely derived from the given args."""
         rnd = StableRandomness.get_random(seed, *args)
