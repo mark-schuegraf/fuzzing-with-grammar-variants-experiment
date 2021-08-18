@@ -10,6 +10,7 @@ import math
 import random
 from abc import ABCMeta
 from pathlib import Path
+from statistics import mean, median
 from typing import Union, final, Final
 
 import luigi
@@ -22,11 +23,6 @@ def choose_grammar_loading_strategy_based_on_file_extension(grammar_file_path) -
         return "parse"
     else:
         return "unmarshal"
-
-
-def safe_wilcoxon(diffs, **kwargs):
-    """Return NaN if all diffs are zero. Otherwise carry out the wilcoxon test."""
-    return wilcoxon(diffs, **kwargs) if any(diffs) else (math.nan, math.nan)
 
 
 def remove_tree(path: Path) -> None:
@@ -58,6 +54,33 @@ class StableRandomness(object):
         """Get a random int that is uniquely derived from the given args."""
         rnd = StableRandomness.get_random(seed, *args)
         return rnd.randrange(StableRandomness.MAX_RND_INT)
+
+
+class Statistics(object):
+    @staticmethod
+    def make_summary_statistics_report(diffs: pd.Series):
+        return {
+            "mean difference": [(mean(diffs))],
+            "median difference": [(median(diffs))],
+            "min difference": [(min(diffs))],
+            "max difference": [(max(diffs))],
+        }
+
+    @staticmethod
+    def make_wilcoxon_report(diffs: pd.Series):
+        w_two_sided, p_two_sided = Statistics.safe_wilcoxon(diffs, alternative="two-sided")
+        w_greater, p_greater = Statistics.safe_wilcoxon(diffs, alternative="greater")
+        return {
+            "wilcoxon (two-sided)": [w_two_sided],
+            "p-value (two-sided)": [p_two_sided],
+            "wilcoxon (greater)": [w_greater],
+            "p-value (greater)": [p_greater],
+        }
+
+    @staticmethod
+    def safe_wilcoxon(diffs, **kwargs):
+        """Return NaN if all diffs are zero. Otherwise carry out the wilcoxon test."""
+        return wilcoxon(diffs, **kwargs) if any(diffs) else (math.nan, math.nan)
 
 
 class TaskWithTemporaryPathCSVWriter(luigi.Task, metaclass=ABCMeta):

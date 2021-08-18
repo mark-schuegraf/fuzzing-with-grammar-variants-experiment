@@ -8,7 +8,6 @@ and computing summary statistics on the paired differences of the evaluation met
 """
 
 from abc import ABCMeta
-from statistics import mean, median
 from typing import final
 
 import luigi
@@ -21,28 +20,40 @@ from lib import work_dir
 
 
 @inherits(evaluation.EvaluateCoverageReports)
-class ProduceResultReport(utils.TaskWithTemporaryPathCSVWriter, metaclass=ABCMeta):
+class ProduceResultReport(utils.TaskWithTemporaryPathCSVWriter, utils.Statistics, metaclass=ABCMeta):
     @final
-    def _wilcoxon_diff_report(self, metric_name: str, after_transformation: pd.Series,
-                              before_transformation: pd.Series) -> pd.DataFrame:
+    def _produce_diff_report(self, metric_name: str, after_transformation: pd.Series,
+                             before_transformation: pd.Series) -> pd.DataFrame:
         diffs = after_transformation - before_transformation
-        w_two_sided, p_two_sided = utils.safe_wilcoxon(diffs, alternative="two-sided")
-        w_greater, p_greater = utils.safe_wilcoxon(diffs, alternative="greater")
+        if any(diffs):
+            return self._produce_any_diff_report(metric_name, diffs)
+        else:
+            return self._produce_no_diff_report(metric_name)
+
+    @final
+    def _produce_any_diff_report(self, metric_name: str, diffs: pd.Series):
         return pd.DataFrame(data={
+            **self._make_report_header(metric_name),
+            **self.make_summary_statistics_report(diffs),
+            **self.make_wilcoxon_report(diffs)
+        })
+
+    @final
+    def _produce_no_diff_report(self, metric_name: str):
+        return pd.DataFrame(data={
+            **self._make_report_header(metric_name),
+            "result": "no difference"
+        })
+
+    @final
+    def _make_report_header(self, metric_name: str):
+        return {
             "language": [self.language],
             "transformation": [self.transformation_name],
             "fuzzing strategy": [self.generation_mode],
             "subject": [self.subject_name],
-            "metric": metric_name,
-            "mean difference": [(mean(diffs))],
-            "median difference": [(median(diffs))],
-            "min difference": [(min(diffs))],
-            "max difference": [(max(diffs))],
-            "wilcoxon (two-sided)": [w_two_sided],
-            "p-value (two-sided)": [p_two_sided],
-            "wilcoxon (greater)": [w_greater],
-            "p-value (greater)": [p_greater],
-        })
+            "metric": [metric_name],
+        }
 
 
 class ProduceCoverageReport(ProduceResultReport):
@@ -55,7 +66,7 @@ class ProduceCoverageReport(ProduceResultReport):
     def run(self):
         coverages_after = pd.read_csv(self.input()["after_transformation"].path)["coverage"]
         coverages_before = pd.read_csv(self.input()["before_transformation"].path)["coverage"]
-        report = self._wilcoxon_diff_report("coverage", coverages_after, coverages_before)
+        report = self._produce_diff_report("coverage", coverages_after, coverages_before)
         self._pd_write_to_csv_using_temporary_path(report)
 
     def output(self):
@@ -74,7 +85,7 @@ class ProduceCoverageGrowthRateReport(ProduceResultReport):
     def run(self):
         growths_after = pd.read_csv(self.input()["after_transformation"].path)["coverage-growth-rate"]
         growths_before = pd.read_csv(self.input()["before_transformation"].path)["coverage-growth-rate"]
-        report = self._wilcoxon_diff_report("coverage-growth-rate", growths_after, growths_before)
+        report = self._produce_diff_report("coverage-growth-rate", growths_after, growths_before)
         self._pd_write_to_csv_using_temporary_path(report)
 
     def output(self):
