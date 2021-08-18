@@ -7,31 +7,17 @@ This module contains luigi tasks to run the grammar transformation experiments.
 
 import logging
 import sys
-from typing import final
 
 import luigi
+from luigi.util import requires
 
-from lib import evaluation
-from lib import utils
+from lib import task_dispatch
 
 
-class Experiment(luigi.WrapperTask, utils.StableRandomness):
-    """Vertical prototype of the full experiment."""
-    random_seed: int = luigi.IntParameter(
-        description="The main seed for this experiment. All other random seeds will be derived from this one.",
-        positional=False)
-    total_number_of_runs: int = luigi.IntParameter(
-        description="The number of runs to conduct per combination of transformation, fuzzer and subject.")
-    subject_name: str = luigi.Parameter(description="The name of the subject to run.")
-    language: str = luigi.Parameter(description="The language specified by the input grammar.")
-
-    @final
-    def requires(self):
-        language_seed = self.random_int(self.random_seed, self.language)
-        return [self.clone(evaluation.AggregateCoverageWithRecurrent2PathWithChomskyGrammar,
-                           subject_name="argo", language_seed=language_seed),
-                self.clone(evaluation.AggregateCoverageGrowthRateWithRecurrent2PathWithChomskyGrammar,
-                           subject_name="argo", language_seed=language_seed)]
+# TODO import DispatchLanguages directly, if there ends up being no other behavior that this task is responsible for
+@requires(task_dispatch.DispatchLanguages)
+class Experiment(luigi.WrapperTask):
+    """Attempts to find a relationship between grammar transformations and coverage metrics."""
 
 
 if __name__ == '__main__':

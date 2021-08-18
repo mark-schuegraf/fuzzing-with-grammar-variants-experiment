@@ -2,53 +2,42 @@
 # -*- coding: utf-8 -*-
 
 """
-This module contains luigi tasks corresponding to tribble generation modes.
+This module contains a luigi task that generates inputs using the tribble fuzzer on a transformed grammar.
 """
 
 import logging
 import subprocess
-from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import final
 
 import luigi
 from luigi.util import inherits
 
-from lib import modes
-from lib import names
-from lib import subjects
+from lib import parametrization as par
 from lib import tooling
-from lib import transformations
+from lib import transformation
 from lib import utils
 from lib import work_dir
 
 
-@inherits(transformations.TransformGrammarWithTribble)
-class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCompoundTransformationName,
-                                modes.WithGenerationMode, metaclass=ABCMeta):
-    run_number: int = luigi.IntParameter(
-        description="The run number corresponding to the input set produced during generation.")
-    language_seed: int = luigi.IntParameter(
-        description="The random seed from which tribble generation seeds for this language are derived.")
+@inherits(transformation.SelectGrammarSource)
+class GenerateInputs(luigi.Task, utils.StableRandomness):
+    generation_mode: str = luigi.Parameter(description="The tribble generation mode to use.")
+    run_number: int = luigi.IntParameter(description="The run number of the produced input set.")
+    language_seed: int = luigi.IntParameter(description="The seed from which seeds for this language are derived.")
     resources = {"ram": 4}
 
-    @property
-    @abstractmethod
-    def transformation_task(self):
-        raise NotImplementedError("Must specify the transformation of the input grammar to perform beforehand!")
-
-    @final
     def requires(self):
-        return tooling.BuildTribble(), self.clone(self.transformation_task)
+        return {
+            "tribble_jar": tooling.BuildTribble(),
+            "grammar_file": self.clone(transformation.SelectGrammarSource)
+        }
 
-    @final
     def run(self):
-        tribble_jar = self.input()[0].path
-        automaton_dir = work_dir / "tools" / "tribble-automaton-cache" / self.language
-        transformed_grammar_file = self.input()[1].path
-        loading_strategy = utils.choose_grammar_loading_strategy_based_on_file_extension(transformed_grammar_file)
-        language_info = subjects[self.language]
+        tribble_jar = self.input()["tribble_jar"].path
         random_seed = self._derive_tribble_generation_seed_from_language_seed()
+        automaton_dir = work_dir / "tools" / "tribble-automaton-cache" / self.language
+        grammar_file = self.input()["grammar_file"].path
+        loading_strategy = utils.choose_grammar_loading_strategy_based_on_file_extension(grammar_file)
         with self.output().temporary_path() as out:
             args = ["java",
                     "-Xss100m",
@@ -60,50 +49,21 @@ class GenerateInputsWithTribble(luigi.Task, utils.StableRandomness, names.WithCo
                     "--ignore-grammar-cache",
                     "--no-check-duplicate-alts",
                     "generate",
-                    f'--suffix={language_info["suffix"]}',
+                    f'--suffix={par.suffixes[self.language]}',
                     f"--out-dir={out}",
-                    f"--grammar-file={transformed_grammar_file}",
+                    f"--grammar-file={grammar_file}",
                     f"--loading-strategy={loading_strategy}",
                     f"--mode={self.generation_mode}",
                     ]
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
-    @final
     def _derive_tribble_generation_seed_from_language_seed(self):
         # also make the seed depend on the output path starting from work_dir
         rel_output_path = Path(self.output().path).relative_to(work_dir)
-        return self.random_int(self.language_seed, self.generation_mode, self.language,
-                               str(self.run_number), *rel_output_path.parts)
+        return self.random_int(self.language_seed, self.generation_mode, self.language, str(self.run_number),
+                               *rel_output_path.parts)
 
-    @final
     def output(self):
         return luigi.LocalTarget(
-            work_dir / "inputs" / self.language / self.generation_mode / self.compound_transformation_name / f"run-{self.run_number}")
-
-
-"""
-Recurrent k-path coverage.
-"""
-
-
-class WithRecurrent2PathNCoverageStrategyWithOriginalGrammar(
-    names.WithIdentityCompoundTransformationName, modes.WithRecurrent2PathNCoverageGenerationMode): pass
-
-
-class GenerateWithRecurrent2PathNCoverageStrategyWithOriginalGrammar(GenerateInputsWithTribble,
-                                                                     WithRecurrent2PathNCoverageStrategyWithOriginalGrammar):
-    @property
-    def transformation_task(self):
-        return transformations.ProduceOriginalGrammar
-
-
-class WithRecurrent2PathNCoverageStrategyWithChomskyGrammar(
-    names.WithChomskyCompoundTransformationName, modes.WithRecurrent2PathNCoverageGenerationMode): pass
-
-
-class GenerateWithRecurrent2PathNCoverageStrategyWithChomskyGrammar(GenerateInputsWithTribble,
-                                                                    WithRecurrent2PathNCoverageStrategyWithChomskyGrammar):
-    @property
-    def transformation_task(self):
-        return transformations.TransformGrammarChomsky
+            work_dir / "inputs" / self.language / self.transformation_name / self.generation_mode / f"run-{self.run_number}")
