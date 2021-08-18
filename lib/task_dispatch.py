@@ -33,14 +33,12 @@ class DispatchTransformations(luigi.WrapperTask):
     language_seed: int = luigi.IntParameter(description="The seed from which seeds for this language are derived.")
 
     def requires(self):
-        return [self.clone(DispatchFuzzingStrategies, transformation_name=name, transformation_mode=mode)
-                for name, mode in par.transformations.items()]
+        return [self.clone(DispatchFuzzingStrategies, transformation_name=name) for name in par.transformations]
 
 
 @inherits(DispatchTransformations)
 class DispatchFuzzingStrategies(luigi.WrapperTask):
     transformation_name: str = luigi.Parameter(description="The transformation to conduct.")
-    transformation_mode: str = luigi.Parameter(description="The tribble transformation mode to use.")
 
     def requires(self):
         return [self.clone(DispatchCompatibleSubjects, generation_mode=strategy) for strategy in par.fuzzing_strategies]

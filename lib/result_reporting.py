@@ -49,8 +49,7 @@ class ProduceCoverageReport(ProduceResultReport):
     def requires(self):
         return {
             "after_transformation": self.clone(evaluation.EvaluateCoverage),
-            "before_transformation": self.clone(evaluation.EvaluateCoverage, transformation_name="identity",
-                                                transformation_mode="")
+            "before_transformation": self.clone(evaluation.EvaluateCoverage, transformation_name="identity")
         }
 
     def run(self):
@@ -69,8 +68,7 @@ class ProduceCoverageGrowthRateReport(ProduceResultReport):
     def requires(self):
         return {
             "after_transformation": self.clone(evaluation.EvaluateCoverageGrowthRate),
-            "before_transformation": self.clone(evaluation.EvaluateCoverageGrowthRate, transformation_name="identity",
-                                                transformation_mode="")
+            "before_transformation": self.clone(evaluation.EvaluateCoverageGrowthRate, transformation_name="identity")
         }
 
     def run(self):

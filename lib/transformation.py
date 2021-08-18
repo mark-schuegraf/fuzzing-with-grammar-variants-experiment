@@ -26,17 +26,16 @@ class ProduceOriginalGrammar(luigi.ExternalTask):
 
 class TransformGrammar(luigi.Task):
     language: str = luigi.Parameter(description="The language specified by the input grammar.")
-    transformation_name: str = luigi.Parameter(description="The transformation to conduct.")
     transformation_mode: str = luigi.Parameter(description="The tribble transformation mode to use.")
     resources = {"ram": 16}
 
     def requires(self):
         return {
             "tribble_jar": tooling.BuildTribble(),
-            "grammar_file": self._choose_transformation_task()
+            "grammar_file": self._choose_prior_transformation_task()
         }
 
-    def _choose_transformation_task(self):
+    def _choose_prior_transformation_task(self):
         if self._prerequisite_mode:
             return self.clone(TransformGrammar, transformation_mode=self._prerequisite_mode)
         else:
@@ -71,22 +70,20 @@ class TransformGrammar(luigi.Task):
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
 
     def output(self):
-        is_last_step = par.transformations[self.transformation_name] == self.transformation_mode
-        rel_out_dir = "" if is_last_step else self.transformation_mode
         return luigi.LocalTarget(
-            work_dir / "transformed-grammars" / self.language / self.transformation_name / rel_out_dir / self.language)
+            work_dir / "transformed-grammars" / self.language / self.transformation_mode / self.language)
 
 
-class TransformOrFetchGrammar(luigi.Task):
+class SelectGrammarSource(luigi.Task):
     language: str = luigi.Parameter(description="The language specified by the input grammar.")
     transformation_name: str = luigi.Parameter(description="The transformation to conduct.")
-    transformation_mode: str = luigi.OptionalParameter(description="The tribble transformation mode to use.")
 
     def requires(self):
-        if self.transformation_mode:
-            return self.clone(TransformGrammar)
-        else:
+        if self.transformation_name == "identity":
             return self.clone(ProduceOriginalGrammar)
+        else:
+            transformer = par.transformations[self.transformation_name]
+            return self.clone(TransformGrammar, transformation_mode=transformer)
 
     def output(self):
         return self.input()
