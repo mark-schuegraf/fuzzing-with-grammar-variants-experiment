@@ -6,6 +6,7 @@ This module contains a luigi task executing a subject with a generated input set
 """
 
 import logging
+import os
 import subprocess
 
 import luigi
@@ -29,6 +30,10 @@ class RunSubjectAndProduceCoverageReport(luigi.Task):
         }
 
     def run(self):
+        self._run_tribble_in_generation_mode()
+        self._check_coverage_report_non_empty()
+
+    def _run_tribble_in_generation_mode(self):
         subject_jar = self.input()["subject_jar"].path
         original_jar = self.input()["original_jar"].path
         input_path = self.input()["inputs"].path
@@ -46,6 +51,12 @@ class RunSubjectAndProduceCoverageReport(luigi.Task):
                 ]
         logging.info("Launching %s", " ".join(args))
         subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
+
+    def _check_coverage_report_non_empty(self):
+        output_path = self.output().path
+        file_size = os.path.getsize(output_path)
+        if not file_size:
+            raise ValueError("Subject execution produced an empty coverage report file.")
 
     def output(self):
         return luigi.LocalTarget(
