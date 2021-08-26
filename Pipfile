@@ -8,6 +8,8 @@ luigi = "*"
 pandas = "*"
 numpy = "*"
 scipy = "*"
+matplotlib = "*"
+seaborn = "*"
 plotly = "*"
 notebook = "*"
 
