@@ -34,11 +34,11 @@ class ProduceResultReport(utils.TaskWithTemporaryPathCSVWriter, utils.Statistics
     @final
     def _make_report_header(self, metric_name: str):
         return {
-            "language": [self.language],
+            "metric": [metric_name],
             "transformation": [self.transformation_name],
+            "language": [self.language],
             "fuzzing strategy": [self.generation_mode],
             "subject": [self.subject_name],
-            "metric": [metric_name],
         }
 
 
