@@ -25,24 +25,10 @@ class ProduceResultReport(utils.TaskWithTemporaryPathCSVWriter, utils.Statistics
     def _produce_diff_report(self, metric_name: str, after_transformation: pd.Series,
                              before_transformation: pd.Series) -> pd.DataFrame:
         diffs = after_transformation - before_transformation
-        if any(diffs):
-            return self._produce_any_diff_report(metric_name, diffs)
-        else:
-            return self._produce_no_diff_report(metric_name)
-
-    @final
-    def _produce_any_diff_report(self, metric_name: str, diffs: pd.Series):
         return pd.DataFrame(data={
             **self._make_report_header(metric_name),
             **self.make_summary_statistics_report(diffs),
             **self.make_wilcoxon_report(diffs)
-        })
-
-    @final
-    def _produce_no_diff_report(self, metric_name: str):
-        return pd.DataFrame(data={
-            **self._make_report_header(metric_name),
-            "result": "no difference"
         })
 
     @final
