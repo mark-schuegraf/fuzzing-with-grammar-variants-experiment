@@ -131,12 +131,48 @@ fuzzing_strategies = [
 
 """Maps transformation names to the transformer that conducts them."""
 transformations = {
+    # normal forms
     "backus-naur-form": "backus-naur-formalizer",
+    "extended-chomsky-normal-form": "extended-chomsky-normal-formalizer",
     "chomsky-normal-form": "chomsky-normal-formalizer",
+    "extended-greibach-normal-form": "extended-greibach-normal-formalizer",
+    "greibach-normal-form": "greibach-normal-formalizer",
+    # normal form substeps
+    "nonsolitary-terminal-extraction": "nonsolitary-terminal-extraction",
+    "nonbinary-rule-reduction": "nonbinary-rule-reduction",
+    "deletion-rule-elimination": "deletion-rule-elimination",
+    "unit-rule-elimination": "unit-rule-elimination",
+    "left-recursion-linearization": "left-recursion-linearization",
+    # grammar adaptation framework
+    "internal-alternation-extraction": "internal-alternation-extraction",
+    "1-level-rule-inlining": "1-level-rule-inlining",
+    "4-level-rule-inlining": "4-level-rule-inlining",
+    "4-level-nonrecursive-rule-inlining": "4-level-nonrecursive-rule-inlining",
+    "3-fold-quantification-expansion": "3-fold-quantification-expansion",
+    "10-fold-quantification-expansion": "10-fold-quantification-expansion",
+    "quantification-elimination": "quantification-elimination",
 }
 
 """Maps transformers to their prerequisite transformers or None if they have no preconditions."""
 transformers: Dict[str, Optional[str]] = {
+    # normal forms
     "backus-naur-formalizer": None,
-    "chomsky-normal-formalizer": "backus-naur-formalizer"
+    "extended-chomsky-normal-formalizer": "backus-naur-formalizer",
+    "chomsky-normal-formalizer": "backus-naur-formalizer",
+    "extended-greibach-normal-formalizer": "extended-chomsky-normal-formalizer",
+    "greibach-normal-formalizer": "chomsky-normal-formalizer",
+    # normal form substeps
+    "nonsolitary-terminal-extraction": "backus-naur-formalizer",
+    "nonbinary-rule-reduction": "backus-naur-formalizer",
+    "deletion-rule-elimination": "backus-naur-formalizer",
+    "unit-rule-elimination": "backus-naur-formalizer",
+    "left-recursion-linearization": "extended-chomsky-normal-formalizer",
+    # grammar adaptation framework
+    "internal-alternation-extraction": None,
+    "1-level-rule-inlining": None,
+    "4-level-rule-inlining": None,
+    "4-level-nonrecursive-rule-inlining": None,
+    "3-fold-quantification-expansion": None,
+    "10-fold-quantification-expansion": None,
+    "quantification-elimination": None,
 }
