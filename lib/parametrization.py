@@ -31,9 +31,16 @@ suffixes = {
     "dot": ".dot",
 }
 
+# TODO find ini and dot grammars
 grammars = {
-    "json": "json/json-org.scala",
-    "url": "url/url-rfc.scala",
+    "json": "json-antlr.scala",
+    "url": "url-antlr.scala",
+    "markdown": "markdown-peg.scala",
+    "csv": "csv-antlr.scala",
+    "javascript": "js-antlr.scala",
+    "css": "css3-antlr.scala",
+    "ini": None,
+    "dot": None,
 }
 
 subjects = {
