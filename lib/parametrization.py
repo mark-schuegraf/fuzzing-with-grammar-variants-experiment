@@ -107,23 +107,15 @@ subjects = {
     },
 }
 
-# TODO add support for LRUChoice heuristic in tribble heuristic module, if possible
-#  Also: how to do cooldown 0.9 for Grammarinator in tribble?
-#  Also: remove 1-2 strategies, too many at the moment
+# does not contain tree-size-limited random, because tree size is arbitrary
 fuzzing_strategies = [
-    # tree-size-limited random -> candidate for removal, already have depth-limited random
-    f"200-random-{config.number_of_files_to_generate}",
     # depth-limited random
     f"30-depth-random-{config.number_of_files_to_generate}",
-    # Grammarinator
-    f"30-depth-random-{config.number_of_files_to_generate} --heuristic=LRUChoice",
+    # Grammarinator-like, but no cooldown 0.9
+    f"30-depth-random-{config.number_of_files_to_generate} --heuristic=least-recently-used",
     # Purdom
-    f"recurrent-1-path-{config.number_of_files_to_generate}",
-    # quickly converging path coverage, so LRU tiebreaker comes into play
-    f"recurrent-1-path-{config.number_of_files_to_generate} --heuristic=LRUChoice",
-    # most successful k-path coverage strategy 1
     f"recurrent-2-path-{config.number_of_files_to_generate}",
-    # most successful k-path coverage strategy 2
+    # most successful k-path coverage strategy
     f"recurrent-3-path-{config.number_of_files_to_generate}",
     # estimates full path coverage
     f"recurrent-5-path-{config.number_of_files_to_generate}",
