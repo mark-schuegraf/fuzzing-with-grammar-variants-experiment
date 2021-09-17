@@ -16,8 +16,6 @@ languages = [
     "csv",
     "javascript",
     "css",
-    "ini",
-    "dot",
 ]
 
 suffixes = {
@@ -27,11 +25,8 @@ suffixes = {
     "csv": ".csv",
     "javascript": ".js",
     "css": ".css",
-    "ini": ".ini",
-    "dot": ".dot",
 }
 
-# TODO find ini and dot grammars
 grammars = {
     "json": "json-antlr.scala",
     "url": "url-antlr.scala",
@@ -39,8 +34,6 @@ grammars = {
     "csv": "csv-antlr.scala",
     "javascript": "js-antlr.scala",
     "css": "css3-antlr.scala",
-    "ini": None,
-    "dot": None,
 }
 
 subjects = {
@@ -95,40 +88,24 @@ subjects = {
         "jstyleparser": "net.sf.cssbox",
         # "ph-css": "com.helger.css",                   unsupported due to Jacoco Error
     },
-    "ini": {
-        "fastini": "com.github.onlynight.fastini",
-        "ini4j": "org.ini4j",
-        "java-configparser": "ca.szc.configparser",
-    },
-    "dot": {
-        "digraph-parser": "com.paypal.digraph.parser",
-        "graphstream": "org.graphstream",
-        "graphviz-java": "guru.nidi",
-    },
 }
 
-# TODO add support for LRUChoice heuristic in tribble heuristic module, if possible
-#  Also: how to do cooldown 0.9 for Grammarinator in tribble?
-#  Also: remove 1-2 strategies, too many at the moment
+# does not contain tree-size-limited random, because tree size is arbitrary
 fuzzing_strategies = [
-    # tree-size-limited random -> candidate for removal, already have depth-limited random
-    f"200-random-{config.number_of_files_to_generate}",
     # depth-limited random
     f"30-depth-random-{config.number_of_files_to_generate}",
-    # Grammarinator
-    f"30-depth-random-{config.number_of_files_to_generate} --heuristic=LRUChoice",
+    # Grammarinator-like, but no cooldown 0.9
+    f"30-depth-random-{config.number_of_files_to_generate} --heuristic=least-recently-used",
     # Purdom
-    f"recurrent-1-path-{config.number_of_files_to_generate}",
-    # quickly converging path coverage, so LRU tiebreaker comes into play
-    f"recurrent-1-path-{config.number_of_files_to_generate} --heuristic=LRUChoice",
-    # most successful k-path coverage strategy 1
     f"recurrent-2-path-{config.number_of_files_to_generate}",
-    # most successful k-path coverage strategy 2
+    # most successful k-path coverage strategy
     f"recurrent-3-path-{config.number_of_files_to_generate}",
     # estimates full path coverage
     f"recurrent-5-path-{config.number_of_files_to_generate}",
 ]
 
+# does not contain normal form substeps as well as most elementary transformations:
+# although supported by tribble, their effect is largely summarized by their containing normal forms
 """Maps transformation names to the transformer that conducts them."""
 transformations = {
     # normal forms
@@ -137,20 +114,8 @@ transformations = {
     "chomsky-normal-form": "chomsky-normal-formalizer",
     "extended-greibach-normal-form": "extended-greibach-normal-formalizer",
     "greibach-normal-form": "greibach-normal-formalizer",
-    # normal form substeps
-    "nonsolitary-terminal-extraction": "nonsolitary-terminal-extraction",
-    "nonbinary-rule-reduction": "nonbinary-rule-reduction",
-    "deletion-rule-elimination": "deletion-rule-elimination",
-    "unit-rule-elimination": "unit-rule-elimination",
-    "left-recursion-linearization": "left-recursion-linearization",
     # grammar adaptation framework
-    "internal-alternation-extraction": "internal-alternation-extraction",
-    "1-level-rule-inlining": "1-level-rule-inlining",
-    "4-level-rule-inlining": "4-level-rule-inlining",
-    "4-level-nonrecursive-rule-inlining": "4-level-nonrecursive-rule-inlining",
-    "3-fold-quantification-expansion": "3-fold-quantification-expansion",
-    "10-fold-quantification-expansion": "10-fold-quantification-expansion",
-    "quantification-elimination": "quantification-elimination",
+    "2-level-rule-inlining": "2-level-rule-inlining",
 }
 
 """Maps transformers to their prerequisite transformers or None if they have no preconditions."""
@@ -161,18 +126,6 @@ transformers: Dict[str, Optional[str]] = {
     "chomsky-normal-formalizer": "backus-naur-formalizer",
     "extended-greibach-normal-formalizer": "extended-chomsky-normal-formalizer",
     "greibach-normal-formalizer": "chomsky-normal-formalizer",
-    # normal form substeps
-    "nonsolitary-terminal-extraction": "backus-naur-formalizer",
-    "nonbinary-rule-reduction": "backus-naur-formalizer",
-    "deletion-rule-elimination": "backus-naur-formalizer",
-    "unit-rule-elimination": "backus-naur-formalizer",
-    "left-recursion-linearization": "extended-chomsky-normal-formalizer",
     # grammar adaptation framework
-    "internal-alternation-extraction": None,
-    "1-level-rule-inlining": None,
-    "4-level-rule-inlining": None,
-    "4-level-nonrecursive-rule-inlining": None,
-    "3-fold-quantification-expansion": None,
-    "10-fold-quantification-expansion": None,
-    "quantification-elimination": None,
+    "2-level-rule-inlining": None,
 }
