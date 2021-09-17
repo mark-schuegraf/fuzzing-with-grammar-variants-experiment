@@ -16,8 +16,6 @@ languages = [
     "csv",
     "javascript",
     "css",
-    "ini",
-    "dot",
 ]
 
 suffixes = {
@@ -27,11 +25,8 @@ suffixes = {
     "csv": ".csv",
     "javascript": ".js",
     "css": ".css",
-    "ini": ".ini",
-    "dot": ".dot",
 }
 
-# TODO find ini and dot grammars
 grammars = {
     "json": "json-antlr.scala",
     "url": "url-antlr.scala",
@@ -39,8 +34,6 @@ grammars = {
     "csv": "csv-antlr.scala",
     "javascript": "js-antlr.scala",
     "css": "css3-antlr.scala",
-    "ini": None,
-    "dot": None,
 }
 
 subjects = {
@@ -94,16 +87,6 @@ subjects = {
         "flute": "org.w3c.flute",
         "jstyleparser": "net.sf.cssbox",
         # "ph-css": "com.helger.css",                   unsupported due to Jacoco Error
-    },
-    "ini": {
-        "fastini": "com.github.onlynight.fastini",
-        "ini4j": "org.ini4j",
-        "java-configparser": "ca.szc.configparser",
-    },
-    "dot": {
-        "digraph-parser": "com.paypal.digraph.parser",
-        "graphstream": "org.graphstream",
-        "graphviz-java": "guru.nidi",
     },
 }
 
