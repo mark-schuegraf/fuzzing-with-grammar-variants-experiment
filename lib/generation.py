@@ -24,7 +24,7 @@ class GenerateInputs(luigi.Task, utils.StableRandomness):
     generation_mode: str = luigi.Parameter(description="The tribble generation mode to use.")
     run_number: int = luigi.IntParameter(description="The run number of the produced input set.")
     language_seed: int = luigi.IntParameter(description="The seed from which seeds for this language are derived.")
-    resources = {"ram": 4}
+    resources = {"ram": 16}
 
     def requires(self):
         return {
