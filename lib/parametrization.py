@@ -115,7 +115,7 @@ transformations = {
     "extended-greibach-normal-form": "extended-greibach-normal-formalizer",
     "greibach-normal-form": "greibach-normal-formalizer",
     # grammar adaptation framework
-    "2-level-rule-inlining": "2-level-rule-inlining",
+    "1-level-rule-inlining": "1-level-rule-inlining",
 }
 
 """Maps transformers to their prerequisite transformers or None if they have no preconditions."""
