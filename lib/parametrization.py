@@ -127,5 +127,5 @@ transformers: Dict[str, Optional[str]] = {
     "extended-greibach-normal-formalizer": "extended-chomsky-normal-formalizer",
     "greibach-normal-formalizer": "chomsky-normal-formalizer",
     # grammar adaptation framework
-    "2-level-rule-inlining": None,
+    "1-level-rule-inlining": None,
 }
