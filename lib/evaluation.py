@@ -54,7 +54,7 @@ class EvaluateCoverage(EvaluateCoverageReports):
 
 class EvaluateCoverageGrowthRate(EvaluateCoverageReports):
     def _evaluate_individual_run(self, run_result: pd.Series) -> pd.Series:
-        return pd.Series(data=run_result.sum(), name="coverage-growth-rate")
+        return pd.Series(data=run_result.mean(), name="coverage-growth-rate")
 
     def output(self):
         return luigi.LocalTarget(
