@@ -19,6 +19,7 @@ from scipy.stats import wilcoxon
 
 
 def choose_grammar_loading_strategy_based_on_file_extension(grammar_file_path) -> str:
+    # the "compile" loading strategy is not used for .scala files, because it is currently broken in tribble
     if grammar_file_path.endswith(".scala") or grammar_file_path.endswith(".tribble"):
         return "parse"
     else:
