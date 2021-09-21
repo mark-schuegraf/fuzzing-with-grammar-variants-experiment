@@ -13,7 +13,7 @@ Grammar(
   'host := "/".? ~ 'hostname,
 
   'hostname := 'string ~ ("." ~ 'string).rep
-              | "[" ~ 'v6host ~ "]",
+    | "[" ~ 'v6host ~ "]",
 
   'v6host := "::".? ~ ('string | 'DIGITS) ~ ((":" | "::") ~ ('string | 'DIGITS)).rep,
 

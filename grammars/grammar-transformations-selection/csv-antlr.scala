@@ -12,7 +12,7 @@ Grammar(
 
   'field := 'TEXT | 'STRING | "",
 
-  'TEXT   := "[^,\n\r\"]+".regex,
+  'TEXT := "[^,\n\r\"]+".regex,
 
   'STRING := "\"" ~ ("\"\"" | "~[\"]".regex).rep ~ "\"" // quote-quote is an escaped quote
 )

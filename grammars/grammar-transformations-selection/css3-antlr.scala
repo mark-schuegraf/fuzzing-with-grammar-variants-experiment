@@ -448,7 +448,7 @@ Grammar(
   ,
 
   'Unicode
-    := "\\" ~ 'Hex.rep(1,6) ~ 'NewlineOrSpace
+    := "\\" ~ 'Hex.rep(1, 6) ~ 'NewlineOrSpace
   ,
 
   'Escape
@@ -737,12 +737,12 @@ Grammar(
     | 'U ~ 'R ~ 'L ~ "(" ~ 'Whitespace ~ 'Url ~ 'Whitespace ~ ")"
   ,
   'UnicodeRange := ("u" | "U") ~ "+" ~
-    ("?".rep(1,6)
-    |'Hex ~ "?".rep(0,5)
-    |'Hex.rep(2,2) ~ "?".rep(0,4)
-    |'Hex.rep(3,3) ~ "?".rep(0,3)
-    |'Hex.rep(4,4) ~ "?".rep(0,2)
-    |'Hex.rep(5,5) ~ "?".?)
+    ("?".rep(1, 6)
+      | 'Hex ~ "?".rep(0, 5)
+      | 'Hex.rep(2, 2) ~ "?".rep(0, 4)
+      | 'Hex.rep(3, 3) ~ "?".rep(0, 3)
+      | 'Hex.rep(4, 4) ~ "?".rep(0, 2)
+      | 'Hex.rep(5, 5) ~ "?".?)
   ,
   // https://www.w3.org/TR/css3-mediaqueries/
   'MediaOnly

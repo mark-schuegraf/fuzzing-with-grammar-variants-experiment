@@ -506,7 +506,7 @@ Grammar(
   'Emph := 'EmphStar | 'EmphUl
 
   ,
-//  'Whitespace := 'Spacechar | 'Newline,
+  //  'Whitespace := 'Spacechar | 'Newline,
 
   'EmphStar := "*" ~ 'StartList ~ ('Inline | 'StrongStar).rep(1) ~ "*",
 
@@ -601,7 +601,7 @@ Grammar(
   'RefTitleParens := 'Spnl ~ "(" ~ "(\\) [\n\r]|[\n\r])*".regex ~ ")"
 
   ,
-//  'References := 'StartList ~ ('Reference | 'SkipBlock).rep,
+  //  'References := 'StartList ~ ('Reference | 'SkipBlock).rep,
 
 
   'Ticks1 := "`"
@@ -662,7 +662,7 @@ Grammar(
   ,
   'AlphanumericAscii := "[A-Za-z0-9]".regex
   ,
-//  'Digit := "[0-9]".regex,
+  //  'Digit := "[0-9]".regex,
 
   'BOM := "\357\273\277"
 
@@ -691,7 +691,7 @@ Grammar(
   'RawLine := "[^\r\n]*".regex ~ 'Newline | ".+".regex ~ 'Eof
 
   ,
-//  'SkipBlock := 'HtmlBlock | 'RawLine.rep(1) ~ 'BlankLine.rep | 'BlankLine.rep(1) | 'RawLine,
+  //  'SkipBlock := 'HtmlBlock | 'RawLine.rep(1) ~ 'BlankLine.rep | 'BlankLine.rep(1) | 'RawLine,
 
   //   'Syntax  'extensions
 
@@ -755,7 +755,7 @@ Grammar(
 
 
   ,
-//  'Notes := 'StartList ~ ('Note | 'SkipBlock).rep,
+  //  'Notes := 'StartList ~ ('Note | 'SkipBlock).rep,
 
 
   'RawNoteBlock := 'StartList ~ 'OptionallyIndentedLine.rep(1) ~ 'BlankLine.rep
