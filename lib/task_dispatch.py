@@ -17,6 +17,8 @@ class DispatchLanguages(luigi.WrapperTask, utils.StableRandomness):
     total_number_of_runs: int = luigi.IntParameter(description="The number of runs to conduct per configuration.")
     random_seed: int = luigi.IntParameter(
         description="The main seed for this experiment. All other random seeds will be derived from this one.")
+    only_transformation: str = luigi.OptionalParameter(
+        description="The name of the only transformation to test, if the full experiment should not be run.")
 
     def requires(self):
         return [self.clone(DispatchTransformations, language=language,
@@ -31,13 +33,20 @@ class DispatchTransformations(luigi.WrapperTask):
     total_number_of_runs: int = luigi.IntParameter(description="The number of runs to conduct per configuration.")
     language: str = luigi.Parameter(description="The language specified by the input grammar.")
     language_seed: int = luigi.IntParameter(description="The seed from which seeds for this language are derived.")
+    only_transformation: str = luigi.OptionalParameter(
+        description="The name of the only transformation to test, if the full experiment should not be run.")
 
     def requires(self):
-        return [self.clone(DispatchFuzzingStrategies, transformation_name=name) for name in par.transformations]
+        if self.only_transformation:
+            return self.clone(DispatchFuzzingStrategies, transformation_name=self.only_transformation)
+        else:
+            return [self.clone(DispatchFuzzingStrategies, transformation_name=name) for name in par.transformations]
 
 
-@inherits(DispatchTransformations)
 class DispatchFuzzingStrategies(luigi.WrapperTask):
+    total_number_of_runs: int = luigi.IntParameter(description="The number of runs to conduct per configuration.")
+    language: str = luigi.Parameter(description="The language specified by the input grammar.")
+    language_seed: int = luigi.IntParameter(description="The seed from which seeds for this language are derived.")
     transformation_name: str = luigi.Parameter(description="The transformation to conduct.")
 
     def requires(self):
