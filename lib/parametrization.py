@@ -110,10 +110,10 @@ fuzzing_strategies = [
 transformations = {
     # normal forms
     "backus-naur-form": "backus-naur-formalizer",
-    "extended-chomsky-normal-form": "extended-chomsky-normal-formalizer",
     "chomsky-normal-form": "chomsky-normal-formalizer",
-    "extended-greibach-normal-form": "extended-greibach-normal-formalizer",
+    "extended-chomsky-normal-form": "extended-chomsky-normal-formalizer",
     "greibach-normal-form": "greibach-normal-formalizer",
+    "extended-greibach-normal-form": "extended-greibach-normal-formalizer",
     # grammar adaptation framework
     "1-level-rule-inlining": "1-level-rule-inlining",
 }
