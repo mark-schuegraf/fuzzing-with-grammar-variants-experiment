@@ -18,7 +18,8 @@ class DispatchLanguages(luigi.WrapperTask, utils.StableRandomness):
     random_seed: int = luigi.IntParameter(
         description="The main seed for this experiment. All other random seeds will be derived from this one.")
     only_transformation: str = luigi.OptionalParameter(
-        description="The name of the only transformation to test, if the full experiment should not be run.")
+        description="The name of the only transformation to test, if the full experiment should not be run.",
+        default=None)
 
     def requires(self):
         return [self.clone(DispatchTransformations, language=language,
