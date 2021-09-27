@@ -93,9 +93,9 @@ subjects = {
 # does not contain tree-size-limited random, because tree size is arbitrary
 fuzzing_strategies = [
     # depth-limited random
-    f"30-depth-random-{config.number_of_files_to_generate}",
+    f"10-depth-random-{config.number_of_files_to_generate}",
     # Grammarinator-like, but no cooldown 0.9
-    f"30-depth-random-{config.number_of_files_to_generate} --heuristic=least-recently-used",
+    f"10-depth-random-{config.number_of_files_to_generate} --heuristic=least-recently-used",
     # Purdom
     f"recurrent-2-path-{config.number_of_files_to_generate}",
     # most successful k-path coverage strategy
