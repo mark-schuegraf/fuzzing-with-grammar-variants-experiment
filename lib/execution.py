@@ -30,10 +30,10 @@ class RunSubjectAndProduceCoverageReport(luigi.Task):
         }
 
     def run(self):
-        self._run_tribble_in_generation_mode()
+        self._run_subject_with_inputs()
         self._check_coverage_report_non_empty()
 
-    def _run_tribble_in_generation_mode(self):
+    def _run_subject_with_inputs(self):
         subject_jar = self.input()["subject_jar"].path
         original_jar = self.input()["original_jar"].path
         input_path = self.input()["inputs"].path
