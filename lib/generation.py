@@ -24,7 +24,7 @@ class GenerateInputs(luigi.Task, utils.StableRandomness):
     fuzzing_strategy: str = luigi.Parameter(description="The fuzzing strategy to use for generation.")
     run_number: int = luigi.IntParameter(description="The run number of the produced input set.")
     language_seed: int = luigi.IntParameter(description="The seed from which seeds for this language are derived.")
-    resources = {"ram": 16}
+    resources = {"ram": 32}
 
     def requires(self):
         return {
