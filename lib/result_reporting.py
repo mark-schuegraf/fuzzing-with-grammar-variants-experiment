@@ -37,7 +37,7 @@ class ProduceResultReport(utils.TaskWithTemporaryPathCSVWriter, utils.Statistics
             "metric": [metric_name],
             "transformation": [self.transformation_name],
             "language": [self.language],
-            "fuzzing strategy": [self.generation_mode],
+            "fuzzing strategy": [self.fuzzing_strategy],
             "subject": [self.subject_name],
         }
 
@@ -57,7 +57,7 @@ class ProduceCoverageReport(ProduceResultReport):
 
     def output(self):
         return luigi.LocalTarget(
-            work_dir / "results" / self.language / self.transformation_name / self.generation_mode / self.subject_name
+            work_dir / "results" / self.language / self.transformation_name / self.fuzzing_strategy / self.subject_name
             / "coverage" / "coverage-diff-report.csv")
 
 
@@ -76,5 +76,5 @@ class ProduceCoverageGrowthRateReport(ProduceResultReport):
 
     def output(self):
         return luigi.LocalTarget(
-            work_dir / "results" / self.language / self.transformation_name / self.generation_mode / self.subject_name
+            work_dir / "results" / self.language / self.transformation_name / self.fuzzing_strategy / self.subject_name
             / "coverage-growth-rate" / "coverage-growth-rate-diff-report.csv")

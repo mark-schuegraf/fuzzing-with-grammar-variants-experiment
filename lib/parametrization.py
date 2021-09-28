@@ -92,17 +92,35 @@ subjects = {
 
 # does not contain tree-size-limited random, because tree size is arbitrary
 fuzzing_strategies = [
-    # depth-limited random
-    f"10-depth-random-{config.number_of_files_to_generate}",
+    # uses arbitrary depth limit to solve bloating problem
+    "depth-limited-random",
     # Grammarinator-like, but no cooldown 0.9
-    f"10-depth-random-{config.number_of_files_to_generate} --heuristic=least-recently-used",
-    # Purdom
-    f"recurrent-2-path-{config.number_of_files_to_generate}",
+    "grammarinator",
+    # sentence generator, covers all productions
+    "purdom",
     # most successful k-path coverage strategy
-    f"recurrent-3-path-{config.number_of_files_to_generate}",
+    "3-path-coverage",
     # estimates full path coverage
-    f"recurrent-5-path-{config.number_of_files_to_generate}",
+    "5-path-coverage",
 ]
+
+"""Maps fuzzing strategies to tribble generation modes."""
+fuzzers = {
+    "depth-limited-random": f"10-depth-random-{config.number_of_files_to_generate}",
+    "grammarinator": f"10-depth-random-{config.number_of_files_to_generate} --heuristic=least-recently-used",
+    "purdom": f"recurrent-2-path-{config.number_of_files_to_generate}",
+    "3-path-coverage": f"recurrent-3-path-{config.number_of_files_to_generate}",
+    "5-path-coverage": f"recurrent-5-path-{config.number_of_files_to_generate}",
+}
+
+"""Maps fuzzing strategies to tribble-supported heuristics."""
+heuristics = {
+    "depth-limited-random": "random",
+    "grammarinator": "least-recently-used",
+    "purdom": "random",
+    "3-path-coverage": "random",
+    "5-path-coverage": "random",
+}
 
 # does not contain normal form substeps as well as most elementary transformations:
 # although supported by tribble, their effect is largely summarized by their containing normal forms

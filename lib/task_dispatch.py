@@ -51,12 +51,12 @@ class DispatchFuzzingStrategies(luigi.WrapperTask):
     transformation_name: str = luigi.Parameter(description="The transformation to conduct.")
 
     def requires(self):
-        return [self.clone(DispatchCompatibleSubjects, generation_mode=strategy) for strategy in par.fuzzing_strategies]
+        return [self.clone(DispatchCompatibleSubjects, fuzzing_strategy=strategy) for strategy in par.fuzzing_strategies]
 
 
 @inherits(DispatchFuzzingStrategies)
 class DispatchCompatibleSubjects(luigi.WrapperTask):
-    generation_mode: str = luigi.Parameter(description="The tribble generation mode to use.")
+    fuzzing_strategy: str = luigi.Parameter(description="The fuzzing strategy to use for generation.")
 
     def requires(self):
         return [self.clone(DispatchMetrics, subject_name=subject) for subject in par.subjects[self.language]]

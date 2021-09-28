@@ -19,7 +19,7 @@ from lib import work_dir
 class EvaluateCoverageReports(utils.TaskWithTemporaryPathCSVWriter, metaclass=ABCMeta):
     language: str = luigi.Parameter(description="The language specified by the input grammar.")
     transformation_name: str = luigi.Parameter(description="The transformation to conduct.")
-    generation_mode: str = luigi.Parameter(description="The tribble generation mode to use.")
+    fuzzing_strategy: str = luigi.Parameter(description="The fuzzing strategy to use for generation.")
     subject_name: str = luigi.Parameter(description="The name of the subject to run.")
     language_seed: int = luigi.IntParameter(description="The seed from which seeds for this language are derived.")
     total_number_of_runs: int = luigi.IntParameter(description="The number of runs to conduct per configuration.")
@@ -48,7 +48,7 @@ class EvaluateCoverage(EvaluateCoverageReports):
 
     def output(self):
         return luigi.LocalTarget(
-            work_dir / "metrics" / self.language / self.transformation_name / self.generation_mode / self.subject_name
+            work_dir / "metrics" / self.language / self.transformation_name / self.fuzzing_strategy / self.subject_name
             / "coverage" / "coverage.csv")
 
 
@@ -58,5 +58,5 @@ class EvaluateCoverageGrowthRate(EvaluateCoverageReports):
 
     def output(self):
         return luigi.LocalTarget(
-            work_dir / "metrics" / self.language / self.transformation_name / self.generation_mode / self.subject_name
+            work_dir / "metrics" / self.language / self.transformation_name / self.fuzzing_strategy / self.subject_name
             / "coverage-growth-rate" / "coverage-growth-rate.csv")

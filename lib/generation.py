@@ -21,7 +21,7 @@ from lib import work_dir
 
 @inherits(transformation.SelectGrammarSource)
 class GenerateInputs(luigi.Task, utils.StableRandomness):
-    generation_mode: str = luigi.Parameter(description="The tribble generation mode to use.")
+    fuzzing_strategy: str = luigi.Parameter(description="The fuzzing strategy to use for generation.")
     run_number: int = luigi.IntParameter(description="The run number of the produced input set.")
     language_seed: int = luigi.IntParameter(description="The seed from which seeds for this language are derived.")
     resources = {"ram": 16}
@@ -53,7 +53,8 @@ class GenerateInputs(luigi.Task, utils.StableRandomness):
                     f"--out-dir={out}",
                     f"--grammar-file={grammar_file}",
                     f"--loading-strategy={loading_strategy}",
-                    f"--mode={self.generation_mode}",
+                    f"--mode={par.fuzzers[self.fuzzing_strategy]}",
+                    f"--heuristic={par.heuristics[self.fuzzing_strategy]}",
                     ]
             logging.info("Launching %s", " ".join(args))
             subprocess.run(args, check=True, stdout=subprocess.DEVNULL)
@@ -61,9 +62,9 @@ class GenerateInputs(luigi.Task, utils.StableRandomness):
     def _derive_tribble_generation_seed_from_language_seed(self):
         # also make the seed depend on the output path starting from work_dir
         rel_output_path = Path(self.output().path).relative_to(work_dir)
-        return self.random_int(self.language_seed, self.generation_mode, self.language, str(self.run_number),
+        return self.random_int(self.language_seed, self.fuzzing_strategy, self.language, str(self.run_number),
                                *rel_output_path.parts)
 
     def output(self):
         return luigi.LocalTarget(
-            work_dir / "inputs" / self.language / self.transformation_name / self.generation_mode / f"run-{self.run_number}")
+            work_dir / "inputs" / self.language / self.transformation_name / self.fuzzing_strategy / f"run-{self.run_number}")
