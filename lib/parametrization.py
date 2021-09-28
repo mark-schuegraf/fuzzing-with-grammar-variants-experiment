@@ -107,7 +107,7 @@ fuzzing_strategies = [
 """Maps fuzzing strategies to tribble generation modes."""
 fuzzers = {
     "depth-limited-random": f"10-depth-random-{config.number_of_files_to_generate}",
-    "grammarinator": f"10-depth-random-{config.number_of_files_to_generate} --heuristic=least-recently-used",
+    "grammarinator": f"10-depth-random-{config.number_of_files_to_generate}",
     "purdom": f"recurrent-2-path-{config.number_of_files_to_generate}",
     "3-path-coverage": f"recurrent-3-path-{config.number_of_files_to_generate}",
     "5-path-coverage": f"recurrent-5-path-{config.number_of_files_to_generate}",
