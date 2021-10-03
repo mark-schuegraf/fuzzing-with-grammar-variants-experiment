@@ -76,7 +76,7 @@ subjects = {
     },
     "javascript": {
         "closure": "com.google.javascript.jscomp",
-        "nashorn-sandbox": "delight.nashornsandbox",
+        # "nashorn-sandbox": "delight.nashornsandbox",  deprecated
         "rhino-sandbox": "delight.rhinosandox",
         "rhino": "org.mozilla.javascript",
     },
