@@ -17,14 +17,21 @@ class DispatchLanguages(luigi.WrapperTask, utils.StableRandomness):
     total_number_of_runs: int = luigi.IntParameter(description="The number of runs to conduct per configuration.")
     random_seed: int = luigi.IntParameter(
         description="The main seed for this experiment. All other random seeds will be derived from this one.")
+    only_language: str = luigi.OptionalParameter(
+        description="The name of the only language to test, if the full experiment should not be run.",
+        default=None)
     only_transformation: str = luigi.OptionalParameter(
         description="The name of the only transformation to test, if the full experiment should not be run.",
         default=None)
 
     def requires(self):
-        return [self.clone(DispatchTransformations, language=language,
-                           language_seed=self._derive_language_seed_from_random_seed(language))
-                for language in par.languages]
+        if self.only_language:
+            return self.clone(DispatchTransformations, language=self.only_language,
+                              language_seed=self._derive_language_seed_from_random_seed(self.only_language))
+        else:
+            return [self.clone(DispatchTransformations, language=language,
+                               language_seed=self._derive_language_seed_from_random_seed(language))
+                    for language in par.languages]
 
     def _derive_language_seed_from_random_seed(self, language):
         return self.random_int(self.random_seed, language)
