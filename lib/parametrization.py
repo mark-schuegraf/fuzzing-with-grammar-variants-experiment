@@ -53,7 +53,7 @@ subjects = {
     },
     "url": {
         "autolink": "org.nibor.autolink",
-        "galimatias-nu": "io.mola.galimatias",
+        # "galimatias-nu": "io.mola.galimatias",        packaging issue
         "galimatias": "io.mola.galimatias",
         "jurl": "com.anthonynsimon.url",
         "url-detector": "com.linkedin.urls.detection",
