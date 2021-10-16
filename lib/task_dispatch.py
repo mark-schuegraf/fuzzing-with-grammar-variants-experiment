@@ -45,10 +45,14 @@ class DispatchTransformations(luigi.WrapperTask):
         description="The name of the only transformation to test, if the full experiment should not be run.")
 
     def requires(self):
+        infeasible = par.infeasible_transformations[self.language]
         if self.only_transformation:
+            if self.only_transformation in infeasible:
+                return
             return self.clone(DispatchFuzzingStrategies, transformation_name=self.only_transformation)
         else:
-            return [self.clone(DispatchFuzzingStrategies, transformation_name=name) for name in par.transformations]
+            return [self.clone(DispatchFuzzingStrategies, transformation_name=name) for name in par.transformations
+                    if name not in infeasible]
 
 
 class DispatchFuzzingStrategies(luigi.WrapperTask):

@@ -5,7 +5,7 @@
 This module contains possible parameter values to experiment with.
 """
 
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from lib import config
 
@@ -152,4 +152,14 @@ transformers: Dict[str, Optional[str]] = {
     "3-fold-quantification-expansion": None,
     "quantification-elimination": None,
     "internal-alternation-extraction": None,
+}
+
+"""Maps languages to those transformation names they do not support."""
+infeasible_transformations: Dict[str, List[str]] = {
+    "json": [],
+    "url": [],
+    "markdown": [],
+    "csv": [],
+    "javascript": ["greibach-normal-form", "extended-greibach-normal-form"],
+    "css": ["greibach-normal-form", "extended-greibach-normal-form"],
 }
