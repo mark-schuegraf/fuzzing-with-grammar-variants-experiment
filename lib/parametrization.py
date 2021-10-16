@@ -134,6 +134,9 @@ transformations = {
     "extended-greibach-normal-form": "extended-greibach-normal-formalizer",
     # grammar adaptation framework
     "1-level-rule-inlining": "1-level-rule-inlining",
+    "3-fold-quantification-expansion": "3-fold-quantification-expansion",
+    "quantification-elimination": "quantification-elimination",
+    "internal-alternation-extraction": "internal-alternation-extraction",
 }
 
 """Maps transformers to their prerequisite transformers or None if they have no preconditions."""
@@ -146,4 +149,7 @@ transformers: Dict[str, Optional[str]] = {
     "greibach-normal-formalizer": "chomsky-normal-formalizer",
     # grammar adaptation framework
     "1-level-rule-inlining": None,
+    "3-fold-quantification-expansion": None,
+    "quantification-elimination": None,
+    "internal-alternation-extraction": None,
 }
