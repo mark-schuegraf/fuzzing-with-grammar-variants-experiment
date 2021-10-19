@@ -59,8 +59,8 @@ subjects = {
         "url-detector": "com.linkedin.urls.detection",
     },
     "markdown": {
-        "commonmark": "org.commonmark",
-        "flexmark": "com.vladsch.flexmark",
+        # "commonmark": "org.commonmark",               flawed Jacoco instrumentation leading to NaN coverage values
+        # "flexmark": "com.vladsch.flexmark",           flawed Jacoco instrumentation leading to NaN coverage values
         "markdown-papers": "org.tautua.markdownpapers",
         "markdown4j": "org.markdown4j",
         "markdownj": "org.markdownj",
