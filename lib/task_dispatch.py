@@ -8,7 +8,9 @@ This module contains luigi wrapper tasks that dispatch tasks matching a single c
 import luigi
 from luigi.util import inherits
 
+from lib import config
 from lib import parametrization as par
+from lib import plotting
 from lib import result_reporting
 from lib import utils
 
@@ -80,3 +82,5 @@ class DispatchMetrics(luigi.WrapperTask):
     def requires(self):
         yield self.clone(result_reporting.ProduceCoverageReport)
         yield self.clone(result_reporting.ProduceCoverageGrowthRateReport)
+        if config.enable_plotting:
+            yield self.clone(plotting.RenderCoveragePlot)

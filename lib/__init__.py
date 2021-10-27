@@ -12,6 +12,8 @@ class ExperimentConfig(luigi.Config):
         description="The path to where all the experiments happen. Should be outside the repository.")
     number_of_files_to_generate: int = luigi.IntParameter(
         description="The number of files that should be generated during each fuzzing run.")
+    enable_plotting: bool = luigi.BoolParameter(description="Whether to produce coverage plots for each configuration.",
+                                                default=False)
 
 
 config = ExperimentConfig()

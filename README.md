@@ -20,6 +20,7 @@ Additional parametrization is done via the command line. To change command line 
 Notable parameters not detailed in the luigi documentation are:
 1. `--only-transformation=<NAME>` that allows running the pipeline only for one particular transformation
 2. `--only-language=<NAME>` that allows running the pipeline only for one particular language
+3. `--enable-plotting=True` (default is `False`) that enables rendering coverage scatter plots to file as part of the experiment, rather than inline in the Jupyter notebook afterwards
 
 ## Running the Pipeline
 
