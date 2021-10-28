@@ -68,7 +68,7 @@ class RenderCoveragePlot(luigi.Task):
         fig = plt.figure(figsize=(20, 8))
         comparison_df = self._make_comparison_df()
         ax = sns.scatterplot(data=comparison_df, x="filenum", y="branch", hue="transformation", style="transformation",
-                             markers=[".", "."], s=10, palette=["red","blue"], alpha=0.05)
+                             markers=["^", "."], s=10, palette=["red", "blue"], alpha=0.05)
         title = self._make_title()
         ax.set_title(title)
         ax.set_xlabel("Number of Files")
