@@ -56,14 +56,10 @@ class TableBuilder:
         sorted_df = df.sort_values(["subject", "fuzzing strategy"])
         return sorted_df
 
-    def _format_df(self, df: pd.DataFrame):
-        return df.round(decimals=4)
-
     def build_metric_table_and_write_to_file(self):
-        raw_df = self._concat_statistics_reports()
-        formatted_df = self._format_df(raw_df)
-        formatted_df.set_index(["subject", "fuzzing strategy"], inplace=True)
-        formatted_df.to_latex("table.tex")
+        df = self._concat_statistics_reports()
+        df.set_index(["subject", "fuzzing strategy"], inplace=True)
+        df.to_latex("table.tex", multirow=True)
 
 
 # Replace these strings to change the configuration for which a table should be built:
