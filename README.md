@@ -1,6 +1,6 @@
-# Grammar Transformations
+# Fuzzing With Grammar Variants Experiment
 
-Experiment exploring how grammar transformations affect fuzzing performance in the context of various fuzzing strategies and subjects.
+Exploring how grammar transformations affect fuzzing performance in the context of various fuzzing strategies and subjects.
 
 ## Overview
 [Luigi](https://github.com/spotify/luigi)-powered automation pipeline that:
