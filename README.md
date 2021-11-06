@@ -7,9 +7,9 @@ Experiment exploring how grammar transformations affect fuzzing performance in t
 
 1. Runs the [havrikov/tribble](https://projects.cispa.saarland/havrikov/tribble) fuzzer in transformation mode to transform a corpus of input grammars into restructured variants
 2. Runs the tribble fuzzer in generation mode to generate inputs using the transformed grammars
-3. Invokes the test subjects with the generated inputs using the code-coverage-instrumented runners for them in the [havrikov/subjects](https://projects.cispa.saarland/havrikov/subjects/) driver collection
+3. Invokes the test subjects with the generated inputs using the code-coverage-instrumented runners for them in the [havrikov/text-processing-java-projects](https://github.com/havrikov/text-processing-java-projects) driver collection
 4. Produces statistical reports for each configuration detailing differences in code coverage and code coverage growth rate, as well as their significance measured using the [Wilcoxon signed-rank test](https://en.m.wikipedia.org/wiki/Wilcoxon_signed-rank_test)
-5. Renders the results into a [Jupyter notebook](https://jupyter.org/) using [pandas](https://pandas.pydata.org/) to display statistical reports as tables and [seaborn](https://seaborn.pydata.org/) to plot coverage progression.
+5. Renders the results into a [Jupyter notebook](https://jupyter.org/) using [pandas](https://pandas.pydata.org/) to display statistical reports as tables and [seaborn](https://seaborn.pydata.org/) to plot coverage progression. Note that it may take quite long to render all coverage progression plots. Prerendered plots can therefore also be found at [mark-schuegraf/fuzzing-with-grammar-variants-results](https://github.com/mark-schuegraf/fuzzing-with-grammar-variants-results)
 
 ## Configuration
 
@@ -25,7 +25,7 @@ Notable parameters not detailed in the luigi documentation are:
 ## Running the Pipeline
 
 1. Install Java 11
-2. Pull the `transformations` branch of [havrikov/tribble](https://projects.cispa.saarland/havrikov/tribble) and the `master` branch of [havrikov/subjects](https://projects.cispa.saarland/havrikov/subjects/)
+2. Pull the `master` branch of the transformation-mode-enhanced fork of the [havrikov/tribble](https://github.com/havrikov/tribble) fuzzer: [mark-schuegraf/tribble](https://github.com/mark-schuegraf/tribble) and the `master` branch of [havrikov/text-processing-java-projects](https://github.com/havrikov/text-processing-java-projects)
 3. Build the projects using `./gradlew build`
 4. Install python 3.8, for example using [pyenv](https://github.com/pyenv/pyenv)
 5. Install [pipenv](https://pipenv.pypa.io/)
@@ -38,6 +38,6 @@ Notable parameters not detailed in the luigi documentation are:
 
 In rare cases, tribble generation may fail with the exception: `java.lang.IllegalArgumentException: loops not allowed`
 
-However, this does not mean that the input grammar contains loops. Rather, they may be created during the contraction hierarchy precomputation step required by contraction-hierarchy-based shortest path algorithms. Since such an algorithm is in use on `tribble/transformations` for reasons of efficiency, there is the risk of that exception being thrown.
+However, this does not mean that the input grammar contains loops. Rather, they may be created during the contraction hierarchy precomputation step required by contraction-hierarchy-based shortest path algorithms. Since such an algorithm is in use by tribble for reasons of efficiency, there is the risk of that exception being thrown.
 
-To deal with this issue, first run the pipeline using the `tribble/transformations` tribble jar. Then, delete the jar living at `$EXPERIMENT_DIR/tools/build/tribble.jar` and before running the pipeline again, pull the `tribble/loop-fix-dijkstra` branch.  Then run the pipeline again. The missing inputs will then be generated using a version of tribble that employs Dijkstra to compute shortest paths instead, which has no precomputation step and thus does not produce self-loops in those fringe cases.
+To deal with this issue, first run the pipeline using the regular tribble JAR. Then, delete the JAR living at `$EXPERIMENT_DIR/tools/build/tribble.jar` and before running the pipeline again, pull the `tribble/loop-fix-dijkstra` branch.  Then run the pipeline again. The missing inputs will then be generated using a version of tribble that employs Dijkstra to compute shortest paths instead, which has no precomputation step and thus does not produce self-loops in those fringe cases.
