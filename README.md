@@ -22,6 +22,8 @@ Notable parameters not detailed in the luigi documentation are:
 2. `--only-language=<NAME>` that allows running the pipeline only for one particular language
 3. `--enable-plotting=True` (default is `False`) that enables rendering coverage scatter plots to file as part of the experiment, rather than inline in the Jupyter notebook afterwards
 
+Finally, the pipeline requires the input grammar directory `$EXPERIMENT_DIR/grammars` to exist. Before running the pipeline, it is necessary to populate it with the grammars to be tested. These can be found in `grammars/in-use`. It is also possible to swap these grammars out for others from `grammars/candidates` or elsewhere, but then corresponding entries need to be added to `lib/parametrization.py`.
+
 ## Running the Pipeline
 
 1. Install Java 11

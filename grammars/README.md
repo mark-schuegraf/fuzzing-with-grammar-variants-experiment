@@ -1,4 +1,4 @@
 #### Contains grammars for experimentation.
-1. `/method-mapping` contains grammars used by `havrikov/method-mapping`
-2. `/tribble` contains grammars used by `havrikov/tribble`
-3. `/grammar-transformations-selection` contains grammars from 1. and 2. used in `mark.schuegraf/grammar-transformations`
+These grammars were sourced from [havrikov/tribble](https://github.com/havrikov/tribble).
+1. `/in-use` contains only the grammars used during experimentation
+1. `/candidates` also contains alternative grammars for the same languages and additional grammars for untested languages
