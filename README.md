@@ -2,6 +2,8 @@
 
 Experiment exploring how grammar transformations affect fuzzing performance in the context of various fuzzing strategies and subjects.
 
+The experiment is described in full in the "Fuzzing With Grammar Variants" master's thesis written by Mark Schuegraf.
+
 ## Overview
 [Luigi](https://github.com/spotify/luigi)-powered automation pipeline that:
 
